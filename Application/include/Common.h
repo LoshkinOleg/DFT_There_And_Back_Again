@@ -1,0 +1,4 @@
+#pragma once
+
+#define MYFDN_SAMPLE_RATE 44100
+#define MYFDN_BUFFER_SIZE 2048

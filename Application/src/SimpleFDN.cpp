@@ -99,7 +99,7 @@ int patestCallback(const void* inputBuffer, void* outputBuffer, unsigned long fr
 
 int main()
 {
-    MyUserData data = LoadWavFile("../resources/audioSamples/olegSpeech_44100Hz_32f.wav", 2, 44100);
+    MyUserData data = LoadWavFile("../resources/audioSamples/olegSpeech_44100Hz_32f.wav", 2, MYFDN_SAMPLE_RATE);
     auto err = Pa_Initialize();
     assert(err == paNoError && "Failed to initialize PortAudio!");
 

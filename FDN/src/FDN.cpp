@@ -53,44 +53,60 @@ void MyFDN::GaussianWhiteNoise(std::vector<float>& out, const size_t seed)
 	}
 }
 
-std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& input)
+std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& input, const size_t sampleRate)
 {
 	// Taken from: https://www.youtube.com/watch?v=ITnPS8HGqLo
+	// Adjusted with: https://www.youtube.com/watch?v=mkGsMWi_j4Q&list=WL&index=1
+
+	/*
+		Noted e^jx x engineering formulas.
+	*/
+	const auto eulersFormula = [](const float x)->std::complex<float>
+	{
+		return std::complex<float>(std::cosf(x), std::sinf(x));
+	};
 
 	using complex = std::complex<float>;
 	constexpr const float PI = 3.14159265;
-	const size_t N = input.size();
-	const size_t K = N;
-	std::vector<complex> returnVal;
-	returnVal.reserve(K);
+	const size_t nrOfSamples = input.size(); // Noted N x math formulas.
+	const size_t resolution = sampleRate / nrOfSamples; // sampleRate is noted K x math formulas.
+	const size_t nyquistLimit = sampleRate / 2;
+
+	std::vector<complex> frequencyBins; // Noted Xk x math formulas. A set of frequency buckets. A bucket is a sum.
+	frequencyBins.resize(nyquistLimit);
 	
-	std::vector<complex> X(input.size(), 0);
-	for (size_t i = 0; i < N; i++)
+	std::vector<complex> x(input.size(), 0);
+	for (size_t i = 0; i < nrOfSamples; i++)
 	{
-		X[i] = complex(input[i], 0.0f);
+		x[i] = complex(input[i], 0.0f);
 	}
 	
-	for (size_t k = 0; k < K; k++)
+	for (size_t k = 0; k < nyquistLimit; k++)
 	{
-		auto intSum = complex(0.0f, 0.0f); // Int stands for integral, not integer right?
-		if (k % (K / 100) == 0)
+		auto currentFrequencyBin = complex(0.0f, 0.0f);
+		if (k % (sampleRate / 100) == 0)
 		{
 			static unsigned int percent = 0;
 	
 			std::cout << "Running DFT: " << std::to_string(percent++) << std::endl;
 		}
 	
-		for (size_t n = 0; n < N; n++)
+		for (size_t n = 0; n < nrOfSamples; n++)
 		{
-			const float real = std::cosf(((2.0f * PI) / N) * k * n);
-			const float imaginary = -std::sinf(((2.0f * PI) / N) * k * n);
-			const complex w(real, imaginary);
-			intSum += X[n] * w;
+			const auto bn = -2.0f * PI * k * n / nrOfSamples;
+			const auto Xn = x[n] * eulersFormula(bn);
+			currentFrequencyBin += Xn;
 		}
-		returnVal.push_back(intSum);
+		frequencyBins[k] = currentFrequencyBin;
+	}
+
+	// Accounting for removal of >= nyquistLimit frequencies.
+	for (size_t i = 0; i < nyquistLimit; i++)
+	{
+		frequencyBins[i] *= 2.0f;
 	}
 	
-	return returnVal;
+	return frequencyBins;
 }
 
 std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(const std::vector<float>& input)
@@ -112,30 +128,46 @@ std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(const std::vector<float>& 
 	return out;
 }
 
-std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input)
+std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, const size_t duration)
 {
 	// Adapted from: https://www.geeksforgeeks.org/discrete-fourier-transform-and-its-inverse-using-c/
 
-	constexpr const float PI = 3.14159265;
-	const size_t len = input.size();
-	const size_t N = len;
-	std::vector<float> returnVal(len, 0.0f);
-
-	for (size_t n = 0; n < N; n++)
+	/*
+		Taken from: https://math.libretexts.org/Bookshelves/Analysis/Complex_Variables_with_Applications_(Orloff)/01%3A_Complex_Algebra_and_the_Complex_Plane/1.12%3A_Inverse_Euler_formula
+	*/
+	const auto inverseEulerFormula = [](const float x)->std::complex<float>
 	{
-		if (n % (N / 100) == 0)
+		return std::complex<float>(std::cosf(x), -std::sinf(x));
+	};
+
+	constexpr const float PI = 3.14159265;
+	const size_t halfSampleRate = input.size();
+	const size_t nrOfSamples = halfSampleRate * 2.0f * duration;
+	std::vector<std::complex<float>> complexTimeDomainSignal(nrOfSamples, 0.0f);
+
+	for (size_t n = 0; n < nrOfSamples; n++)
+	{
+		if (n % (nrOfSamples / 100) == 0)
 		{
 			static unsigned int percent = 0;
 
 			std::cout << "Running IDFT: " << std::to_string(percent++) << std::endl;
 		}
 
-		for (size_t k = 0; k < N; k++)
+		std::complex<float> complexSample(0.0f, 0.0f);
+		for (size_t k = 0; k < halfSampleRate; k++)
 		{
-			const float theta = (2.0f * PI * k * n) / N;
-			returnVal[n] += input[k].real() * std::cosf(theta) + input[k].imag() * std::sinf(theta);
+			const auto bn = 2.0f * PI * k * n / nrOfSamples;
+			const auto xn = input[k] * inverseEulerFormula(bn) / (float)nrOfSamples;
+			complexSample += xn;
 		}
-		returnVal[n] /= N;
+		complexTimeDomainSignal[n] = complexSample;
+	}
+
+	std::vector<float> returnVal(nrOfSamples, 0.0f);
+	for (size_t i = 0; i < nrOfSamples; i++)
+	{
+		returnVal[i] = complexTimeDomainSignal[i].real();
 	}
 
 	return returnVal;

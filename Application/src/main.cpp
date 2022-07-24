@@ -1,4 +1,4 @@
-#include "simple_fft_FFTandIFFT.h"
+#include "DFT.h"
 
 int main()
 {

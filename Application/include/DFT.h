@@ -118,56 +118,56 @@ int Run()
 	/*
 		Uncomment this part to write the output of the DFT to standard output.
 	*/
-    const auto data = LoadWavFile("../resources/audioSamples/sine440_8000Hz_32f_1sec.wav", 1, MYFDN_SAMPLE_RATE);
-    const auto dftResult = MyFDN::DFT(data.audioData);
-	
-    for (size_t i = 0; i < dftResult.size(); i++)
-    {
-        PrintComplex(dftResult[i]);
-    }
+    // const auto data = LoadWavFile("../resources/audioSamples/sine440_8000Hz_32f_1sec.wav", 1, MYFDN_SAMPLE_RATE);
+    // const auto dftResult = MyFDN::DFT(data.audioData, MYFDN_SAMPLE_RATE);
+	// 
+    // for (size_t i = 0; i < dftResult.size(); i++)
+    // {
+    //     PrintComplex(dftResult[i]);
+    // }
 
 	/*
 		Uncomment this part to load, process and play the result of the IDFT that takes an input the DFT's output.
 	*/
-	// MyUserData data;
-	// data.audioData = MyFDN::IDFT(ParseDFTOutput("../results/440InputForIDFT.txt"));
-	// auto err = Pa_Initialize();
-	// assert(err == paNoError && "Failed to initialize PortAudio!");
-	// 
-	// PaStreamParameters outputParameters =
-	// {
-	// 	Pa_GetDefaultOutputDevice(),
-	// 	2,
-	// 	paFloat32,
-	// 	Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice())->defaultLowOutputLatency,
-	// 	NULL
-	// };
-	// assert(outputParameters.device != paNoDevice && "Failed to retrieve a default playback device!");
-	// 
-	// PaStream* stream;
-	// err = Pa_OpenStream(
-	// 	&stream,
-	// 	NULL, /* no input */
-	// 	&outputParameters,
-	// 	(double)MYFDN_SAMPLE_RATE,
-	// 	(double)MYFDN_BUFFER_SIZE,
-	// 	paClipOff,      /* we won't output out of range samples so don't bother clipping them */
-	// 	patestCallback,
-	// 	&data);
-	// assert(err == paNoError && "Failed to open stream to device.");
-	// 
-	// err = Pa_StartStream(stream);
-	// assert(err == paNoError && "Failed to start stream.");
-	// 
-	// std::cin.ignore();
-	// 
-	// err = Pa_StopStream(stream);
-	// assert(err == paNoError && "Failed to stop stream.");
-	// 
-	// err = Pa_CloseStream(stream);
-	// assert(err == paNoError && "Failed to close stream.");
-	// 
-	// Pa_Terminate();
+	MyUserData data;
+	data.audioData = MyFDN::IDFT(ParseDFTOutput("../results/DFT_output.txt"), 1.0f);
+	auto err = Pa_Initialize();
+	assert(err == paNoError && "Failed to initialize PortAudio!");
+	
+	PaStreamParameters outputParameters =
+	{
+		Pa_GetDefaultOutputDevice(),
+		2,
+		paFloat32,
+		Pa_GetDeviceInfo(Pa_GetDefaultOutputDevice())->defaultLowOutputLatency,
+		NULL
+	};
+	assert(outputParameters.device != paNoDevice && "Failed to retrieve a default playback device!");
+	
+	PaStream* stream;
+	err = Pa_OpenStream(
+		&stream,
+		NULL, /* no input */
+		&outputParameters,
+		(double)MYFDN_SAMPLE_RATE,
+		(double)MYFDN_BUFFER_SIZE,
+		paClipOff,      /* we won't output out of range samples so don't bother clipping them */
+		patestCallback,
+		&data);
+	assert(err == paNoError && "Failed to open stream to device.");
+	
+	err = Pa_StartStream(stream);
+	assert(err == paNoError && "Failed to start stream.");
+	
+	std::cin.ignore();
+	
+	err = Pa_StopStream(stream);
+	assert(err == paNoError && "Failed to stop stream.");
+	
+	err = Pa_CloseStream(stream);
+	assert(err == paNoError && "Failed to close stream.");
+	
+	Pa_Terminate();
 
     return 0;
 }

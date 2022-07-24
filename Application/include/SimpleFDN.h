@@ -12,29 +12,6 @@
 #include "Common.h"
 #include "FDN.h"
 
-struct MyUserData
-{
-    std::vector<float> audioData;
-    size_t currentBegin = 0;
-    size_t currentEnd = 0;
-};
-
-MyUserData LoadWavFile(const char* filePath, const std::uint32_t channels, const std::uint32_t sampleRate)
-{
-    drwav_uint64 totalPCMFrameCount;
-    unsigned int chan, smplRte;
-
-    float* pSampleData = drwav_open_file_and_read_pcm_frames_f32(filePath, &chan, &smplRte, &totalPCMFrameCount, NULL);
-    assert(pSampleData != nullptr && "Failed to load wav file.");
-
-    MyUserData returnVal;
-    returnVal.audioData.resize(totalPCMFrameCount);
-    memcpy(&*returnVal.audioData.begin(), pSampleData, totalPCMFrameCount * sizeof(float));
-    drwav_free(pSampleData, NULL);
-
-    return returnVal;
-}
-
 int patestCallback(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo * timeInfo, PaStreamCallbackFlags statusFlags, void* userData)
  {
     float* out = (float*)outputBuffer;

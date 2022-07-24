@@ -21,6 +21,7 @@ target_include_directories(FDN PUBLIC
 	${PROJECT_SOURCE_DIR}/thirdparty/dr_wav/include/
 	${PROJECT_SOURCE_DIR}/thirdparty/sdl/include/
 	${PROJECT_SOURCE_DIR}/thirdparty/spdlog/include/
+	${PROJECT_SOURCE_DIR}/thirdparty/Simple-FFT/include/
 	)
 target_link_libraries(FDN PRIVATE
 	general ${PROJECT_SOURCE_DIR}/thirdparty/portaudio/lib/portaudio_static_x64.lib

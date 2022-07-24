@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <complex>
 
 namespace MyFDN
 {
@@ -12,5 +13,11 @@ namespace MyFDN
 
 	void GaussianWhiteNoise(std::vector<float>& out, const size_t seed);
 
-	void Radix2DITCooleyTukeyAlgoritm(std::vector<float>& output, const std::vector<float>& input, const size_t stride, const size_t N);
+	std::vector<std::complex<float>> DFT(const std::vector<float>& input);
+
+	std::vector<std::complex<float>> SimpleFFT_FFT(const std::vector<float>& input);
+
+	std::vector<float> IDFT(const std::vector<std::complex<float>>& input);
+
+	std::vector<float> SimpleFFT_IFFT(const std::vector<std::complex<float>>& input);
 }

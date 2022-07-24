@@ -3,7 +3,10 @@
 #include <cassert>
 #include <random>
 #include <cmath>
+#include <iostream>
 
+#include "simple_fft/fft_settings.h"
+#include "simple_fft/fft.h"
 
 void MyFDN::SumSignals(std::vector<float>& out, const std::vector<float> other)
 {
@@ -50,42 +53,115 @@ void MyFDN::GaussianWhiteNoise(std::vector<float>& out, const size_t seed)
 	}
 }
 
-void MyFDN::Radix2DITCooleyTukeyAlgoritm(std::vector<float>& output, const std::vector<float>& input, const size_t stride, const size_t N)
+std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& input)
 {
-	/*
-	Taken from: https://en.wikipedia.org/wiki/Cooley%E2%80%93Tukey_FFT_algorithm
+	// Taken from: https://www.youtube.com/watch?v=ITnPS8HGqLo
+
+	using complex = std::complex<float>;
+	constexpr const float PI = 3.14159265;
+	const size_t N = input.size();
+	const size_t K = N;
+	std::vector<complex> returnVal;
+	returnVal.reserve(K);
 	
-	X0,...,N−1 ← ditfft2(x, N, s):						DFT of (x0, xs, x2s, ..., x(N-1)s):
-    if N = 1 then
-        X0 ← x0											trivial size-1 DFT base case
-    else
-        X0,...,N/2−1 ← ditfft2(x, N/2, 2s)				DFT of (x0, x2s, x4s, ..., x(N-2)s)
-        XN/2,...,N−1 ← ditfft2(x+s, N/2, 2s)			DFT of (xs, xs+2s, xs+4s, ..., x(N-1)s)
-        for k = 0 to N/2−1 do							combine DFTs of two halves into full DFT:
-            p ← Xk
-            q ← exp(−2πi/N k) Xk+N/2
-            Xk ← p + q 
-            Xk+N/2 ← p − q
-        end for
-    end if
-	*/
-
-	assert(std::ceilf(std::log2f(N)) == std::floorf(std::log2f(N)) && "N is not a power of two.");
-
-	if (input.size() == 1)
+	std::vector<complex> X(input.size(), 0);
+	for (size_t i = 0; i < N; i++)
 	{
-		output = input;
-		return;
+		X[i] = complex(input[i], 0.0f);
 	}
-	else
+	
+	for (size_t k = 0; k < K; k++)
 	{
-		std::vector<float> radix0(input.size() / 2);
-		std::vector<float> radix1(input.size() / 2);
-		Radix2DITCooleyTukeyAlgoritm(radix0, input, 2 * stride, N / 2);
-		Radix2DITCooleyTukeyAlgoritm(radix1, std::vector<float>(input.begin() + stride, input.end()), 2 * stride, N / 2);
-		for (size_t k = 0; k < (N / 2) - 1; k++)
+		auto intSum = complex(0.0f, 0.0f); // Int stands for integral, not integer right?
+		if (k % (K / 100) == 0)
 		{
-
+			static unsigned int percent = 0;
+	
+			std::cout << "Running DFT: " << std::to_string(percent++) << std::endl;
 		}
+	
+		for (size_t n = 0; n < N; n++)
+		{
+			const float real = std::cosf(((2.0f * PI) / N) * k * n);
+			const float imaginary = -std::sinf(((2.0f * PI) / N) * k * n);
+			const complex w(real, imaginary);
+			intSum += X[n] * w;
+		}
+		returnVal.push_back(intSum);
 	}
+	
+	return returnVal;
+}
+
+std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(const std::vector<float>& input)
+{
+	// TODO: slice input into vectors of power of two, process, stitch back together and return.
+
+	typedef std::vector<real_type> RealArray1D;
+	typedef std::vector<complex_type> ComplexArray1D;
+
+	ComplexArray1D out(input.size());
+	const char* errMsg = nullptr;
+
+	if (!simple_fft::FFT<RealArray1D, ComplexArray1D>(input, out, input.size(), errMsg))
+	{
+		std::cerr << "Failed to compute FFT: " << errMsg << std::endl;
+		throw;
+	}
+
+	return out;
+}
+
+std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input)
+{
+	// Adapted from: https://www.geeksforgeeks.org/discrete-fourier-transform-and-its-inverse-using-c/
+
+	constexpr const float PI = 3.14159265;
+	const size_t len = input.size();
+	const size_t N = len;
+	std::vector<float> returnVal(len, 0.0f);
+
+	for (size_t n = 0; n < N; n++)
+	{
+		if (n % (N / 100) == 0)
+		{
+			static unsigned int percent = 0;
+
+			std::cout << "Running IDFT: " << std::to_string(percent++) << std::endl;
+		}
+
+		for (size_t k = 0; k < N; k++)
+		{
+			const float theta = (2.0f * PI * k * n) / N;
+			returnVal[n] += input[k].real() * std::cosf(theta) + input[k].imag() * std::sinf(theta);
+		}
+		returnVal[n] /= N;
+	}
+
+	return returnVal;
+}
+
+std::vector<float> MyFDN::SimpleFFT_IFFT(const std::vector<std::complex<float>>& input)
+{
+	// TODO: slice input into vectors of power of two, process, stitch back together and return.
+
+	typedef std::vector<real_type> RealArray1D;
+	typedef std::vector<complex_type> ComplexArray1D;
+
+	ComplexArray1D out(input.size());
+	const char* errMsg = nullptr;
+
+	if (!simple_fft::IFFT<ComplexArray1D>(input, out, input.size(), errMsg))
+	{
+		std::cerr << "Failed to compute FFT: " << errMsg << std::endl;
+		throw;
+	}
+
+	std::vector<float> returnVal(input.size());
+	for (size_t i = 0; i < input.size(); i++)
+	{
+		returnVal[i] = out[i].real();
+	}
+
+	return returnVal;
 }

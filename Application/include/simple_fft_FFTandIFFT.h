@@ -130,7 +130,7 @@ int Run()
 		Uncomment this part to load, process and play the result of the IDFT that takes an input the DFT's output.
 	*/
 	// MyUserData data;
-	// data.audioData = MyFDN::IDFT(ParseDFTOutput_("../results/440InputForIDFT.txt"));
+	// data.audioData = MyFDN::IDFT(ParseDFTOutput("../results/440InputForIDFT.txt"));
 	// auto err = Pa_Initialize();
 	// assert(err == paNoError && "Failed to initialize PortAudio!");
 	// 

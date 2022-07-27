@@ -72,8 +72,7 @@ std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& input, con
 	const size_t resolution = sampleRate / nrOfSamples; // sampleRate is noted K x math formulas.
 	const size_t nyquistLimit = sampleRate / 2;
 
-	std::vector<complex> frequencyBins; // Noted Xk x math formulas. A set of frequency buckets. A bucket is a sum.
-	frequencyBins.resize(nyquistLimit);
+	std::vector<complex> frequencyBins(nyquistLimit); // Noted Xk x math formulas. A set of frequency buckets. A bucket is a sum.
 	
 	std::vector<complex> x(input.size(), 0);
 	for (size_t i = 0; i < nrOfSamples; i++)
@@ -84,12 +83,12 @@ std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& input, con
 	for (size_t k = 0; k < nyquistLimit; k++)
 	{
 		auto currentFrequencyBin = complex(0.0f, 0.0f);
-		if (k % (sampleRate / 100) == 0)
-		{
-			static unsigned int percent = 0;
-	
-			std::cout << "Running DFT: " << std::to_string(percent++) << std::endl;
-		}
+		// if (k % (sampleRate / 100) == 0)
+		// {
+		// 	static unsigned int percent = 0;
+		// 
+		// 	std::cout << "Running DFT: " << std::to_string(percent++) << std::endl;
+		// }
 	
 		for (size_t n = 0; n < nrOfSamples; n++)
 		{
@@ -125,7 +124,7 @@ std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(const std::vector<float>& 
 		throw;
 	}
 
-	return out;
+	return ComplexArray1D(out.begin(), out.begin() + out.size() / 2);
 }
 
 std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, const float duration)

@@ -18,7 +18,7 @@ int patestCallback(const void* inputBuffer, void* outputBuffer, unsigned long fr
 {
 	float* out = (float*)outputBuffer;
 	std::vector<float> outputBuff = std::vector<float>(MYFDN_BUFFER_SIZE, 0.0f);
-	MyUserData* const data = (MyUserData*)userData;
+	Clip* const data = (Clip*)userData;
 	auto& begin = data->currentBegin;
 	auto& end = data->currentEnd;
 	const auto& audioData = data->audioData;
@@ -129,7 +129,7 @@ int Run()
 	/*
 		Uncomment this part to load, process and play the result of the IDFT that takes an input the DFT's output.
 	*/
-	MyUserData data;
+	Clip data;
 	data.audioData = MyFDN::IDFT(ParseDFTOutput("../results/DFT_output.txt"), 1.0f);
 	auto err = Pa_Initialize();
 	assert(err == paNoError && "Failed to initialize PortAudio!");

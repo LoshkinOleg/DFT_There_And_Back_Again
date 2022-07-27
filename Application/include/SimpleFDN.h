@@ -16,7 +16,7 @@ int patestCallback(const void* inputBuffer, void* outputBuffer, unsigned long fr
  {
     float* out = (float*)outputBuffer;
 	std::vector<float> outputBuff = std::vector<float>(MYFDN_BUFFER_SIZE, 0.0f);
-    MyUserData* const data = (MyUserData*)userData;
+    Clip* const data = (Clip*)userData;
 	auto& begin = data->currentBegin;
 	auto& end = data->currentEnd;
 	const auto& audioData = data->audioData;
@@ -76,7 +76,7 @@ int patestCallback(const void* inputBuffer, void* outputBuffer, unsigned long fr
 
 int Run()
 {
-    MyUserData data = LoadWavFile("../resources/audioSamples/olegSpeech_44100Hz_32f.wav", 1, MYFDN_SAMPLE_RATE);
+    Clip data = LoadWavFile("../resources/audioSamples/olegSpeech_44100Hz_32f.wav", 1, MYFDN_SAMPLE_RATE);
     auto err = Pa_Initialize();
     assert(err == paNoError && "Failed to initialize PortAudio!");
 

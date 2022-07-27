@@ -128,7 +128,7 @@ std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(const std::vector<float>& 
 	return out;
 }
 
-std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, const size_t duration)
+std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, const float duration)
 {
 	// Adapted from: https://www.geeksforgeeks.org/discrete-fourier-transform-and-its-inverse-using-c/
 
@@ -142,7 +142,7 @@ std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, co
 
 	constexpr const float PI = 3.14159265;
 	const size_t halfSampleRate = input.size();
-	const size_t nrOfSamples = halfSampleRate * 2.0f * duration;
+	const size_t nrOfSamples = halfSampleRate * (size_t)(2.0f * duration);
 	std::vector<std::complex<float>> complexTimeDomainSignal(nrOfSamples, 0.0f);
 
 	for (size_t n = 0; n < nrOfSamples; n++)

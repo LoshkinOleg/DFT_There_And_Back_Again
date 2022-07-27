@@ -4,7 +4,7 @@
 
 #include "dr_wav.h"
 
-#define MYFDN_SAMPLE_RATE 8000
+#define MYFDN_SAMPLE_RATE 44100
 #define MYFDN_BUFFER_SIZE 2048
 #define MYFDN_SEED 0x1337
 

@@ -17,7 +17,7 @@ namespace MyFDN
 
 	std::vector<std::complex<float>> SimpleFFT_FFT(const std::vector<float>& input);
 
-	std::vector<float> IDFT(const std::vector<std::complex<float>>& input, const size_t duration);
+	std::vector<float> IDFT(const std::vector<std::complex<float>>& input, const float duration);
 
 	std::vector<float> SimpleFFT_IFFT(const std::vector<std::complex<float>>& input);
 }

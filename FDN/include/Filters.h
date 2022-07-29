@@ -150,9 +150,8 @@ void InitPortaudio(Clip& data)
 	};
 	assert(outputParameters.device != paNoDevice && "Failed to retrieve a default playback device!");
 
-	PaStream* stream;
 	err = Pa_OpenStream(
-		&stream,
+		&pStream,
 		NULL, /* no input */
 		&outputParameters,
 		(double)MYFDN_SAMPLE_RATE,
@@ -162,7 +161,7 @@ void InitPortaudio(Clip& data)
 		&data);
 	assert(err == paNoError && "Failed to open stream to device.");
 
-	err = Pa_StartStream(stream);
+	err = Pa_StartStream(pStream);
 	assert(err == paNoError && "Failed to start stream.");
 }
 

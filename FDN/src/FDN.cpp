@@ -79,6 +79,12 @@ std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& input, con
 	
 	for (size_t k = 0; k < sampleRate; k++)
 	{
+		if (k % (sampleRate / 100) == 0)
+		{
+			static unsigned int percent = 0;
+			std::cout << "Computing DFT: " << std::to_string(percent++) << std::endl;
+		}
+
 		for (size_t n = 0; n < nrOfSamples; n++)
 		{
 			frequencyBinsReal[k] += input[n] * cosf(2.0f * PI * k * n / nrOfSamples);
@@ -86,7 +92,7 @@ std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& input, con
 		}
 	}
 
-	std::vector<complex> output(nrOfSamples, std::complex<float>(0.0f, 0.0f));
+	std::vector<complex> output(sampleRate, std::complex<float>(0.0f, 0.0f));
 	for (size_t i = 0; i < output.size(); i++)
 	{
 		output[i] = std::complex<float>(frequencyBinsReal[i], frequencyBinsImag[i]);
@@ -126,9 +132,9 @@ std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, co
 		return std::complex<float>(std::cosf(x), -std::sinf(x));
 	};
 
-	constexpr const float PI = 3.14159265;
+	constexpr const float PI = 3.14159265f;
 	const size_t sampleRate = input.size();
-	const size_t nrOfSamples = sampleRate * (size_t)(duration);
+	const size_t nrOfSamples = (float)(sampleRate) * duration;
 	std::vector<float> signal(nrOfSamples, 0.0f);
 
 	for (size_t n = 0; n < nrOfSamples; n++)

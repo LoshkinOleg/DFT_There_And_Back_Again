@@ -121,7 +121,7 @@ int patestCallback(const void* inputBuffer, void* outputBuffer, unsigned long fr
 	const auto wavSize = data->audioData.size();
 
 	LoadNextAudioData(*data, outputBuff);
-	ApplyFilter(outputBuff);
+	// ApplyFilter(outputBuff);
 
 	for (size_t i = 0; i < MYFDN_BUFFER_SIZE; i++)
 	{
@@ -134,9 +134,9 @@ int patestCallback(const void* inputBuffer, void* outputBuffer, unsigned long fr
 	return paContinue;
 }
 
-int Run()
+PaStream* pStream = nullptr;
+void InitPortaudio(Clip& data)
 {
-	Clip data = LoadWavFile("../resources/audioSamples/olegSpeech_44100Hz_32f.wav", 1, MYFDN_SAMPLE_RATE);
 	auto err = Pa_Initialize();
 	assert(err == paNoError && "Failed to initialize PortAudio!");
 
@@ -164,16 +164,57 @@ int Run()
 
 	err = Pa_StartStream(stream);
 	assert(err == paNoError && "Failed to start stream.");
+}
 
-	std::cin.ignore();
-
-	err = Pa_StopStream(stream);
+void ShutdownPortAudio()
+{
+	auto err = Pa_StopStream(pStream);
 	assert(err == paNoError && "Failed to stop stream.");
 
-	err = Pa_CloseStream(stream);
+	err = Pa_CloseStream(pStream);
 	assert(err == paNoError && "Failed to close stream.");
 
 	Pa_Terminate();
+}
+
+int Run()
+{
+	Clip data = LoadWavFile("../resources/audioSamples/olegSpeech_44100Hz_32f.wav", 1, MYFDN_SAMPLE_RATE);
+	
+	InitPortaudio(data);
+
+	std::cin.ignore();
+
+	ShutdownPortAudio();
 
 	return 0;
+}
+
+void WriteFilteredWav(const char* wavPath, const size_t clipDuration)
+{
+	Clip data = LoadWavFile("../resources/audioSamples/olegSpeech_8000Hz_32f.wav", 1, MYFDN_SAMPLE_RATE);
+	
+	// MyFDN::PadToNearestPowerOfTwo(data.audioData);
+
+	const auto fourierTransform = MyFDN::DFT(data.audioData, MYFDN_SAMPLE_RATE);
+	
+	// std::vector<std::complex<float>> idealFilterComplexIR(MYFDN_SAMPLE_RATE / 2, std::complex<float>(0.0f, 0.0f));
+	// constexpr const size_t cutoffFrequency = 1500;
+	// for (size_t i = 0; i < cutoffFrequency; i++)
+	// {
+	// 	idealFilterComplexIR[i] = std::complex<float>(1.0f, 0.0f);
+	// }
+	// 
+	// const auto timeDomainIR = MyFDN::IDFT(idealFilterComplexIR, clipDuration);
+	data.audioData = MyFDN::IDFT(fourierTransform, clipDuration);
+
+	ToWavFile(data.audioData, wavPath, MYFDN_SAMPLE_RATE, 1);
+
+	std::cout << "Done." << std::endl;
+
+	InitPortaudio(data);
+
+	std::cin.ignore();
+
+	ShutdownPortAudio();
 }

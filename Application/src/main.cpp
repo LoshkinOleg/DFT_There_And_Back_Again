@@ -2,7 +2,7 @@
 
 int main()
 {
-	Run();
+	WriteFilteredWav("output.wav", 4.274f);
 
 	return 0;
 }

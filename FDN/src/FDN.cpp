@@ -65,47 +65,34 @@ std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& input, con
 	{
 		return std::complex<float>(std::cosf(x), std::sinf(x));
 	};
+	const auto inverseEulerFormula = [](const float x)->std::complex<float>
+	{
+		return std::complex<float>(std::cosf(x), -std::sinf(x));
+	};
 
 	using complex = std::complex<float>;
 	constexpr const float PI = 3.14159265;
 	const size_t nrOfSamples = input.size(); // Noted N x math formulas.
-	const size_t resolution = sampleRate / nrOfSamples; // sampleRate is noted K x math formulas.
-	const size_t nyquistLimit = sampleRate / 2;
-
-	std::vector<complex> frequencyBins(nyquistLimit); // Noted Xk x math formulas. A set of frequency buckets. A bucket is a sum.
 	
-	std::vector<complex> x(input.size(), 0);
-	for (size_t i = 0; i < nrOfSamples; i++)
+	std::vector<float> frequencyBinsReal(sampleRate, 0.0f);
+	std::vector<float> frequencyBinsImag(sampleRate, 0.0f);
+	
+	for (size_t k = 0; k < sampleRate; k++)
 	{
-		x[i] = complex(input[i], 0.0f);
-	}
-	
-	for (size_t k = 0; k < nyquistLimit; k++)
-	{
-		auto currentFrequencyBin = complex(0.0f, 0.0f);
-		// if (k % (sampleRate / 100) == 0)
-		// {
-		// 	static unsigned int percent = 0;
-		// 
-		// 	std::cout << "Running DFT: " << std::to_string(percent++) << std::endl;
-		// }
-	
 		for (size_t n = 0; n < nrOfSamples; n++)
 		{
-			const auto bn = -2.0f * PI * k * n / nrOfSamples;
-			const auto Xn = x[n] * eulersFormula(bn);
-			currentFrequencyBin += Xn;
+			frequencyBinsReal[k] += input[n] * cosf(2.0f * PI * k * n / nrOfSamples);
+			frequencyBinsImag[k] += -input[n] * sinf(2.0f * PI * k * n / nrOfSamples);
 		}
-		frequencyBins[k] = currentFrequencyBin;
 	}
 
-	// Accounting for removal of >= nyquistLimit frequencies.
-	for (size_t i = 0; i < nyquistLimit; i++)
+	std::vector<complex> output(nrOfSamples, std::complex<float>(0.0f, 0.0f));
+	for (size_t i = 0; i < output.size(); i++)
 	{
-		frequencyBins[i] *= 2.0f;
+		output[i] = std::complex<float>(frequencyBinsReal[i], frequencyBinsImag[i]);
 	}
-	
-	return frequencyBins;
+
+	return output;
 }
 
 std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(const std::vector<float>& input)
@@ -124,7 +111,7 @@ std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(const std::vector<float>& 
 		throw;
 	}
 
-	return ComplexArray1D(out.begin(), out.begin() + out.size() / 2);
+	return ComplexArray1D(out.begin(), out.begin() + out.size());
 }
 
 std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, const float duration)
@@ -140,9 +127,9 @@ std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, co
 	};
 
 	constexpr const float PI = 3.14159265;
-	const size_t halfSampleRate = input.size();
-	const size_t nrOfSamples = halfSampleRate * (size_t)(2.0f * duration);
-	std::vector<std::complex<float>> complexTimeDomainSignal(nrOfSamples, 0.0f);
+	const size_t sampleRate = input.size();
+	const size_t nrOfSamples = sampleRate * (size_t)(duration);
+	std::vector<float> signal(nrOfSamples, 0.0f);
 
 	for (size_t n = 0; n < nrOfSamples; n++)
 	{
@@ -153,23 +140,17 @@ std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, co
 			std::cout << "Running IDFT: " << std::to_string(percent++) << std::endl;
 		}
 
-		std::complex<float> complexSample(0.0f, 0.0f);
-		for (size_t k = 0; k < halfSampleRate; k++)
+		float realSample = 0.0f;
+		for (size_t k = 0; k < sampleRate; k++)
 		{
 			const auto bn = 2.0f * PI * k * n / nrOfSamples;
-			const auto xn = input[k] * inverseEulerFormula(bn) / (float)nrOfSamples;
-			complexSample += xn;
+			// const auto xn = input[k] * inverseEulerFormula(bn) / (float)nrOfSamples;
+			realSample += input[k].real() * std::cosf(bn) + input[k].imag() * std::sinf(bn);
 		}
-		complexTimeDomainSignal[n] = complexSample;
+		signal[n] = realSample / nrOfSamples;
 	}
 
-	std::vector<float> returnVal(nrOfSamples, 0.0f);
-	for (size_t i = 0; i < nrOfSamples; i++)
-	{
-		returnVal[i] = complexTimeDomainSignal[i].real();
-	}
-
-	return returnVal;
+	return signal;
 }
 
 std::vector<float> MyFDN::SimpleFFT_IFFT(const std::vector<std::complex<float>>& input)
@@ -195,4 +176,44 @@ std::vector<float> MyFDN::SimpleFFT_IFFT(const std::vector<std::complex<float>>&
 	}
 
 	return returnVal;
+}
+
+void MyFDN::PadToNearestPowerOfTwo(std::vector<std::complex<float>>& buffer)
+{
+	const size_t currentSize = buffer.size();
+
+	// Taken from https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+	size_t newSize = currentSize;
+	newSize--;
+	newSize |= newSize >> 1;
+	newSize |= newSize >> 2;
+	newSize |= newSize >> 4;
+	newSize |= newSize >> 8;
+	newSize |= newSize >> 16;
+	newSize |= newSize >> 32;
+	newSize++;
+
+	const size_t nrOfNewElements = newSize - currentSize;
+
+	buffer.insert(buffer.end(), nrOfNewElements, std::complex<float>(0.0f, 0.0f));
+}
+
+void MyFDN::PadToNearestPowerOfTwo(std::vector<float>& buffer)
+{
+	const size_t currentSize = buffer.size();
+
+	// Taken from https://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
+	size_t newSize = currentSize;
+	newSize--;
+	newSize |= newSize >> 1;
+	newSize |= newSize >> 2;
+	newSize |= newSize >> 4;
+	newSize |= newSize >> 8;
+	newSize |= newSize >> 16;
+	newSize |= newSize >> 32;
+	newSize++;
+
+	const size_t nrOfNewElements = newSize - currentSize;
+
+	buffer.insert(buffer.end(), nrOfNewElements, 0.0f);
 }

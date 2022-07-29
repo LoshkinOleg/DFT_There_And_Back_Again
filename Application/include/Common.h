@@ -3,8 +3,8 @@
 #include <vector>
 #include <complex>
 
-#define MYFDN_SAMPLE_RATE 44100
-#define MYFDN_BUFFER_SIZE 2048
+#define MYFDN_SAMPLE_RATE 8000
+#define MYFDN_BUFFER_SIZE 1024
 #define MYFDN_SEED 0x1337
 
 struct Clip
@@ -15,6 +15,8 @@ struct Clip
 };
 
 Clip LoadWavFile(const char* filePath, const std::uint32_t channels, const std::uint32_t sampleRate);
+
+void ToWavFile(const std::vector<float>& signal, const char* path, const size_t sampleRate, const size_t nrOfChannels);
 
 std::vector<std::complex<float>> ParseDFTOutput(const char* path);
 

@@ -20,4 +20,8 @@ namespace MyFDN
 	std::vector<float> IDFT(const std::vector<std::complex<float>>& input, const float duration);
 
 	std::vector<float> SimpleFFT_IFFT(const std::vector<std::complex<float>>& input);
+
+	void PadToNearestPowerOfTwo(std::vector<std::complex<float>>& buffer);
+
+	void PadToNearestPowerOfTwo(std::vector<float>& buffer);
 }

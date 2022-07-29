@@ -25,6 +25,22 @@ Clip LoadWavFile(const char* filePath, const std::uint32_t channels, const std::
 	return returnVal;
 }
 
+void ToWavFile(const std::vector<float>& signal, const char* path, const size_t sampleRate, const size_t nrOfChannels)
+{
+	drwav wav;
+	drwav_data_format format;
+	format.container = drwav_container_riff;     // <-- drwav_container_riff = normal WAV files, drwav_container_w64 = Sony Wave64.
+	format.format = DR_WAVE_FORMAT_IEEE_FLOAT;          // <-- Any of the DR_WAVE_FORMAT_* codes.
+	format.channels = nrOfChannels;
+	format.sampleRate = sampleRate;
+	format.bitsPerSample = 32;
+	auto err = drwav_init_file_write(&wav, path, &format, NULL);
+	assert(err && "drwav_init_file_write failed");
+	drwav_uint64 framesWritten = drwav_write_pcm_frames(&wav, signal.size() / format.channels, signal.data());
+	assert(framesWritten == signal.size() / format.channels && "Failed to write pcm data.");
+	drwav_uninit(&wav);
+}
+
 std::vector<std::complex<float>> ParseDFTOutput(const char* path)
 {
 	const auto complexFromString = [](const std::string& str)->std::complex<float>

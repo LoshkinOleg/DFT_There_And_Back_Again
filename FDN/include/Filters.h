@@ -193,19 +193,16 @@ void WriteFilteredWav(const char* wavPath, const size_t clipDuration)
 {
 	Clip data = LoadWavFile("../resources/audioSamples/olegSpeech_8000Hz_32f.wav", 1, MYFDN_SAMPLE_RATE);
 	
-	// MyFDN::PadToNearestPowerOfTwo(data.audioData);
-
-	const auto fourierTransform = MyFDN::DFT(data.audioData, MYFDN_SAMPLE_RATE);
+	MyFDN::PadToNearestPowerOfTwo(data.audioData);
+	auto fourierTransform = MyFDN::SimpleFFT_FFT(data.audioData);
 	
-	// std::vector<std::complex<float>> idealFilterComplexIR(MYFDN_SAMPLE_RATE / 2, std::complex<float>(0.0f, 0.0f));
-	// constexpr const size_t cutoffFrequency = 1500;
-	// for (size_t i = 0; i < cutoffFrequency; i++)
-	// {
-	// 	idealFilterComplexIR[i] = std::complex<float>(1.0f, 0.0f);
-	// }
-	// 
-	// const auto timeDomainIR = MyFDN::IDFT(idealFilterComplexIR, clipDuration);
-	data.audioData = MyFDN::IDFT(fourierTransform, clipDuration);
+	constexpr const size_t cutoffFrequency = 1500;
+	for (size_t i = cutoffFrequency; i < fourierTransform.size(); i++)
+	{
+		fourierTransform[i] = std::complex<float>(0.0f, 0.0f);
+	}
+	
+	data.audioData = MyFDN::SimpleFFT_IFFT(fourierTransform);
 
 	ToWavFile(data.audioData, wavPath, MYFDN_SAMPLE_RATE, 1);
 

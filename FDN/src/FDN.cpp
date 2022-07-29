@@ -55,12 +55,8 @@ void MyFDN::GaussianWhiteNoise(std::vector<float>& out, const size_t seed)
 
 std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& input, const size_t sampleRate)
 {
-	// Taken from: https://www.youtube.com/watch?v=ITnPS8HGqLo
-	// Adjusted with: https://www.youtube.com/watch?v=mkGsMWi_j4Q&list=WL&index=1
+	// DFT -> IDFT results in a signal that has only 1/4 of the specter of the input signal. Look into it.
 
-	/*
-		Noted e^jx x engineering formulas.
-	*/
 	const auto eulersFormula = [](const float x)->std::complex<float>
 	{
 		return std::complex<float>(std::cosf(x), std::sinf(x));
@@ -122,11 +118,7 @@ std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(const std::vector<float>& 
 
 std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, const float duration)
 {
-	// Adapted from: https://www.geeksforgeeks.org/discrete-fourier-transform-and-its-inverse-using-c/
-
-	/*
-		Taken from: https://math.libretexts.org/Bookshelves/Analysis/Complex_Variables_with_Applications_(Orloff)/01%3A_Complex_Algebra_and_the_Complex_Plane/1.12%3A_Inverse_Euler_formula
-	*/
+	// DFT -> IDFT results in a signal that has only 1/4 of the specter of the input signal. Look into it.
 	const auto inverseEulerFormula = [](const float x)->std::complex<float>
 	{
 		return std::complex<float>(std::cosf(x), -std::sinf(x));

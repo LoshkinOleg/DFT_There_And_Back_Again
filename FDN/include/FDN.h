@@ -7,7 +7,9 @@ namespace MyFDN
 {
 	void SumSignals(std::vector<float>& out, const std::vector<float> other);
 
-	void SimpleFDN(std::vector<float>& output, const std::vector<float>& input, const size_t bufferSize, const float attenuationFactor);
+	void FeedbackCombFilter(std::vector<float>& output, const std::vector<float>& input, const size_t bufferSize, const float attenuationFactor);
+
+	void FourthOrderSISO_FDN(std::vector<float>& output, const std::vector<float>& input);
 
 	void WhiteNoise(std::vector<float>& out, const size_t seed);
 

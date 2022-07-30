@@ -42,7 +42,7 @@ int patestCallback(const void* inputBuffer, void* outputBuffer, unsigned long fr
 		}
 	}
 
-    MyFDN::SimpleFDN(outputBuff, outputBuff, MYFDN_BUFFER_SIZE, 0.8f);
+    MyFDN::FeedbackCombFilter(outputBuff, outputBuff, MYFDN_BUFFER_SIZE, 0.8f);
 
     for (size_t i = 0; i < MYFDN_BUFFER_SIZE; i++)
     {

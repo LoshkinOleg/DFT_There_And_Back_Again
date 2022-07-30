@@ -4,6 +4,7 @@
 #include <random>
 #include <cmath>
 #include <iostream>
+#include <array>
 
 #include "simple_fft/fft_settings.h"
 #include "simple_fft/fft.h"
@@ -18,8 +19,10 @@ void MyFDN::SumSignals(std::vector<float>& out, const std::vector<float> other)
 	}
 }
 
-void MyFDN::SimpleFDN(std::vector<float>& output, const std::vector<float>& input, const size_t bufferSize, const float attenuationFactor)
+void MyFDN::FeedbackCombFilter(std::vector<float>& output, const std::vector<float>& input, const size_t bufferSize, const float attenuationFactor)
 {
+	// https://www.dsprelated.com/freebooks/pasp/Feedback_Comb_Filters.html
+
 	static std::vector<float> lastResult = std::vector<float>(bufferSize, 0.0f);
 
 	assert(output.size() == input.size() && input.size() == bufferSize && "Mismatching buffer sizes.");
@@ -28,6 +31,123 @@ void MyFDN::SimpleFDN(std::vector<float>& output, const std::vector<float>& inpu
 	{
 		lastResult[i] = input[i] + lastResult[i] * attenuationFactor;
 		output[i] = lastResult[i];
+	}
+}
+
+void MyFDN::FourthOrderSISO_FDN(std::vector<float>& output, const std::vector<float>& input)
+{
+	// https://www.dsprelated.com/freebooks/pasp/Feedback_Delay_Networks_FDN.html
+	// https://www.dsprelated.com/freebooks/pasp/Choice_Lossless_Feedback_Matrix.html
+
+	assert(output.size() == input.size() && "Mismatching buffer sizes.");
+
+	using vector = std::array<float, 4>;
+	using matrix = std::array<vector, 4>;
+
+	constexpr const float b0 = 1.0f / 4.0f;
+	constexpr const float b1 = 1.0f / 4.0f;
+	constexpr const float b2 = 1.0f / 4.0f;
+	constexpr const float b3 = 1.0f / 4.0f;
+
+	constexpr const float c0 = 1.0f;
+	constexpr const float c1 = 1.0f;
+	constexpr const float c2 = 1.0f;
+	constexpr const float c3 = 1.0f;
+
+	constexpr const float g0 = 0.8f;
+	constexpr const float g1 = 0.8f;
+	constexpr const float g2 = 0.8f;
+	constexpr const float g3 = 0.8f;
+
+	// TODO: check that this is the right matrix orientation.
+	constexpr const matrix HADAMARD_MATRIX =
+	{ {
+		{ 0.5f,  0.5f,  0.5f, 0.5f},
+		{-0.5f,  0.5f, -0.5f, 0.5f},
+		{-0.5f, -0.5f,  0.5f, 0.5f},
+		{ 0.5f, -0.5f, -0.5f, 0.5f}
+	} };
+
+	static std::vector<float> delayed0(input.size(), 0.0f);
+	static std::vector<float> delayed1(input.size(), 0.0f);
+	static std::vector<float> delayed2(input.size(), 0.0f);
+	static std::vector<float> delayed3(input.size(), 0.0f);
+
+	static std::vector<float> input0(input.size(), 0.0f);
+	static std::vector<float> input1(input.size(), 0.0f);
+	static std::vector<float> input2(input.size(), 0.0f);
+	static std::vector<float> input3(input.size(), 0.0f);
+
+	std::copy(input.begin(), input.end(), input0.begin());
+	std::copy(input.begin(), input.end(), input1.begin());
+	std::copy(input.begin(), input.end(), input2.begin());
+	std::copy(input.begin(), input.end(), input3.begin());
+
+	for (size_t i = 0; i < input.size(); i++)
+	{
+		input0[i] *= b0;
+		input1[i] *= b1;
+		input2[i] *= b2;
+		input3[i] *= b3;
+	}
+
+	for (size_t i = 0; i < input.size(); i++)
+	{
+		input0[i] += delayed0[i];
+		input1[i] += delayed1[i];
+		input2[i] += delayed2[i];
+		input3[i] += delayed3[i];
+	}
+
+	std::copy(input0.begin(), input0.end(), delayed0.begin());
+	std::copy(input1.begin(), input1.end(), delayed1.begin());
+	std::copy(input2.begin(), input2.end(), delayed2.begin());
+	std::copy(input3.begin(), input3.end(), delayed3.begin());
+
+	for (size_t i = 0; i < input.size(); i++)
+	{
+		input0[i] *= c0;
+		input1[i] *= c1;
+		input2[i] *= c2;
+		input3[i] *= c3;
+	}
+
+	for (size_t i = 0; i < input.size(); i++)
+	{
+		output[i] = input0[i] + input1[i] + input2[i] + input3[i];
+	}
+
+	// TODO: check that this is the right matrix orientation.
+	const auto VectorMatrixMultiplication = [](const vector& v, const matrix& m)->vector
+	{
+		return
+		{
+			m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2] + m[0][3] * v[3],
+			m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2] + m[1][3] * v[3],
+			m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2] + m[2][3] * v[3],
+			m[3][0] * v[0] + m[3][1] * v[1] + m[3][2] * v[2] + m[3][3] * v[3]
+		};
+	};
+
+	for (size_t i = 0; i < input.size(); i++)
+	{
+		const auto mixed = VectorMatrixMultiplication
+		(
+			{delayed0[i], delayed1[i], delayed2[i], delayed3[i]},
+			HADAMARD_MATRIX
+		);
+		delayed0[i] = mixed[0];
+		delayed1[i] = mixed[1];
+		delayed2[i] = mixed[2];
+		delayed3[i] = mixed[3];
+	}
+
+	for (size_t i = 0; i < input.size(); i++)
+	{
+		delayed0[i] *= g0;
+		delayed1[i] *= g1;
+		delayed2[i] *= g2;
+		delayed3[i] *= g3;
 	}
 }
 

@@ -104,10 +104,14 @@ void LoadNextAudioData(Clip& clip, std::vector<float>& outputBuff)
 
 void ApplyFilter(std::vector<float>& outputBuff)
 {
-	static FIRfilter f;
-	static std::vector<float> filterInput(MYFDN_BUFFER_SIZE, 0.0f);
+	// static FIRfilter f;
+	// static std::vector<float> filterInput(MYFDN_BUFFER_SIZE, 0.0f);
+	// std::copy(outputBuff.begin(), outputBuff.end(), filterInput.begin());
+	// f.Apply(filterInput, outputBuff);
+
+	static std::vector<float> filterInput(outputBuff.size(), 0.0f);
 	std::copy(outputBuff.begin(), outputBuff.end(), filterInput.begin());
-	f.Apply(filterInput, outputBuff);
+	MyFDN::FourthOrderSISO_FDN(outputBuff, filterInput);
 }
 
 int patestCallback(const void* inputBuffer, void* outputBuffer, unsigned long framesPerBuffer, const PaStreamCallbackTimeInfo* timeInfo, PaStreamCallbackFlags statusFlags, void* userData)
@@ -121,7 +125,7 @@ int patestCallback(const void* inputBuffer, void* outputBuffer, unsigned long fr
 	const auto wavSize = data->audioData.size();
 
 	LoadNextAudioData(*data, outputBuff);
-	// ApplyFilter(outputBuff);
+	ApplyFilter(outputBuff);
 
 	for (size_t i = 0; i < MYFDN_BUFFER_SIZE; i++)
 	{
@@ -192,22 +196,6 @@ int Run()
 void WriteFilteredWav(const char* wavPath, const float clipDuration)
 {
 	Clip data = LoadWavFile("../resources/audioSamples/olegSpeech_8000Hz_32f.wav", 1, MYFDN_SAMPLE_RATE);
-	
-	auto fourierTransform = MyFDN::DFT(data.audioData, MYFDN_SAMPLE_RATE);
-	// auto fourierTransform = MyFDN::SimpleFFT_FFT(data.audioData);
-
-	// constexpr const size_t cutoffFrequency = 1500;
-	// for (size_t i = cutoffFrequency; i < fourierTransform.size(); i++)
-	// {
-	// 	fourierTransform[i] = std::complex<float>(0.0f, 0.0f);
-	// }
-	
-	data.audioData = MyFDN::IDFT(fourierTransform, clipDuration * float(MYFDN_SAMPLE_RATE));
-	// data.audioData = MyFDN::SimpleFFT_IFFT(fourierTransform);
-
-	ToWavFile(data.audioData, wavPath, MYFDN_SAMPLE_RATE, 1);
-
-	std::cout << "Done." << std::endl;
 
 	InitPortaudio(data);
 

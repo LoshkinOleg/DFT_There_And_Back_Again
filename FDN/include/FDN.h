@@ -13,15 +13,21 @@ namespace MyFDN
 
 	void GaussianWhiteNoise(std::vector<float>& out, const size_t seed);
 
-	std::vector<std::complex<float>> DFT(const std::vector<float>& input, const size_t sampleRate);
+	std::vector<std::complex<float>> DFT(const std::vector<float>& x, const size_t K);
 
-	std::vector<std::complex<float>> SimpleFFT_FFT(const std::vector<float>& input);
+	std::vector<std::complex<float>> SimpleFFT_FFT(std::vector<float>& input);
 
-	std::vector<float> IDFT(const std::vector<std::complex<float>>& input, const float duration);
+	std::vector<float> IDFT(const std::vector<std::complex<float>>& y, const float N);
 
-	std::vector<float> SimpleFFT_IFFT(const std::vector<std::complex<float>>& input);
+	std::vector<float> SimpleFFT_IFFT(std::vector<std::complex<float>>& input);
 
 	void PadToNearestPowerOfTwo(std::vector<std::complex<float>>& buffer);
 
 	void PadToNearestPowerOfTwo(std::vector<float>& buffer);
+
+	std::complex<float> EulersFormula(const float theta);
+	
+	std::complex<float> InverseEulersFormula(const float theta);
+	
+	bool IsPowerOfTwo(const size_t x);
 }

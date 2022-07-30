@@ -53,53 +53,43 @@ void MyFDN::GaussianWhiteNoise(std::vector<float>& out, const size_t seed)
 	}
 }
 
-std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& input, const size_t sampleRate)
+std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& x, const size_t K)
 {
 	// DFT -> IDFT results in a signal that has only 1/4 of the specter of the input signal. Look into it.
 
-	const auto eulersFormula = [](const float x)->std::complex<float>
+	const auto PrintProgress = [](const size_t k, const size_t K)->void
 	{
-		return std::complex<float>(std::cosf(x), std::sinf(x));
-	};
-	const auto inverseEulerFormula = [](const float x)->std::complex<float>
-	{
-		return std::complex<float>(std::cosf(x), -std::sinf(x));
+		if (k % (K / 100) == 0)
+		{
+			static unsigned int percent = 0;
+			std::cout << "Computing DFT: " << std::to_string(percent++) << "% done." << std::endl;
+			if (percent >= 100) percent = 0;
+		}
 	};
 
 	using complex = std::complex<float>;
 	constexpr const float PI = 3.14159265;
-	const size_t nrOfSamples = input.size(); // Noted N x math formulas.
+	const size_t N = x.size();
 	
-	std::vector<float> frequencyBinsReal(sampleRate, 0.0f);
-	std::vector<float> frequencyBinsImag(sampleRate, 0.0f);
+	std::vector<complex> y(2 * K, complex(0.0f, 0.0f)); // 2 * K To prevent spectral loss.
 	
-	for (size_t k = 0; k < sampleRate; k++)
+	for (size_t k = 0; k < 2 * K; k++)
 	{
-		if (k % (sampleRate / 100) == 0)
-		{
-			static unsigned int percent = 0;
-			std::cout << "Computing DFT: " << std::to_string(percent++) << std::endl;
-		}
+		PrintProgress(k, 2 * K);
 
-		for (size_t n = 0; n < nrOfSamples; n++)
+		for (size_t n = 0; n < N; n++)
 		{
-			frequencyBinsReal[k] += input[n] * cosf(2.0f * PI * k * n / nrOfSamples);
-			frequencyBinsImag[k] += -input[n] * sinf(2.0f * PI * k * n / nrOfSamples);
+			y[k] += x[n] * InverseEulersFormula(2.0f * PI * k * n / N);
 		}
+		y[k] *= 2.0f; // Account for the -6db volume loss due to 2*K.
 	}
 
-	std::vector<complex> output(sampleRate, std::complex<float>(0.0f, 0.0f));
-	for (size_t i = 0; i < output.size(); i++)
-	{
-		output[i] = std::complex<float>(frequencyBinsReal[i], frequencyBinsImag[i]);
-	}
-
-	return output;
+	return y;
 }
 
-std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(const std::vector<float>& input)
+std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(std::vector<float>& input)
 {
-	// TODO: slice input into vectors of power of two, process, stitch back together and return.
+	if (!IsPowerOfTwo(input.size())) PadToNearestPowerOfTwo(input);
 
 	typedef std::vector<real_type> RealArray1D;
 	typedef std::vector<complex_type> ComplexArray1D;
@@ -116,44 +106,43 @@ std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(const std::vector<float>& 
 	return ComplexArray1D(out.begin(), out.begin() + out.size());
 }
 
-std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& input, const float duration)
+std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& y, const float N)
 {
 	// DFT -> IDFT results in a signal that has only 1/4 of the specter of the input signal. Look into it.
-	const auto inverseEulerFormula = [](const float x)->std::complex<float>
-	{
-		return std::complex<float>(std::cosf(x), -std::sinf(x));
-	};
 
-	constexpr const float PI = 3.14159265f;
-	const size_t sampleRate = input.size();
-	const size_t nrOfSamples = (float)(sampleRate) * duration;
-	std::vector<float> signal(nrOfSamples, 0.0f);
-
-	for (size_t n = 0; n < nrOfSamples; n++)
+	const auto PrintProgress = [](const size_t k, const size_t K)->void
 	{
-		if (n % (nrOfSamples / 100) == 0)
+		if (k % (K / 100) == 0)
 		{
 			static unsigned int percent = 0;
-
-			std::cout << "Running IDFT: " << std::to_string(percent++) << std::endl;
+			std::cout << "Computing IDFT: " << std::to_string(percent++) << "% done." << std::endl;
+			if (percent >= 100) percent = 0;
 		}
+	};
 
-		float realSample = 0.0f;
-		for (size_t k = 0; k < sampleRate; k++)
+	using complex = std::complex<float>;
+	constexpr const float PI = 3.14159265;
+	const size_t K = y.size();
+
+	std::vector<float> x(N, 0.0f);
+
+	for (size_t n = 0; n < N; n++)
+	{
+		PrintProgress(n, N);
+
+		for (size_t k = 0; k < K; k++)
 		{
-			const auto bn = 2.0f * PI * k * n / nrOfSamples;
-			// const auto xn = input[k] * inverseEulerFormula(bn) / (float)nrOfSamples;
-			realSample += input[k].real() * std::cosf(bn) + input[k].imag() * std::sinf(bn);
+			x[n] += (y[k] * EulersFormula(2.0f * PI * k * n / N)).real();
 		}
-		signal[n] = realSample / nrOfSamples;
+		x[n] /= N;
 	}
 
-	return signal;
+	return x;
 }
 
-std::vector<float> MyFDN::SimpleFFT_IFFT(const std::vector<std::complex<float>>& input)
+std::vector<float> MyFDN::SimpleFFT_IFFT(std::vector<std::complex<float>>& input)
 {
-	// TODO: slice input into vectors of power of two, process, stitch back together and return.
+	if (!IsPowerOfTwo(input.size())) PadToNearestPowerOfTwo(input);
 
 	typedef std::vector<real_type> RealArray1D;
 	typedef std::vector<complex_type> ComplexArray1D;
@@ -214,4 +203,22 @@ void MyFDN::PadToNearestPowerOfTwo(std::vector<float>& buffer)
 	const size_t nrOfNewElements = newSize - currentSize;
 
 	buffer.insert(buffer.end(), nrOfNewElements, 0.0f);
+}
+
+std::complex<float> MyFDN::EulersFormula(const float theta)
+{
+	// e^ix = cos(x) + i sin(x)
+	return std::complex<float>(std::cosf(theta), std::sinf(theta)); // Clockwise rotation.
+}
+
+std::complex<float> MyFDN::InverseEulersFormula(const float theta)
+{
+	// e^-ix = cos(x) - i sin(x)
+	return std::complex<float>(std::cosf(theta), -std::sinf(theta)); // Counterclockwise rotation.
+}
+
+bool MyFDN::IsPowerOfTwo(const size_t x)
+{
+	// Taken from: https://stackoverflow.com/questions/108318/how-can-i-test-whether-a-number-is-a-power-of-2
+	return (x & (x - 1)) == 0;
 }

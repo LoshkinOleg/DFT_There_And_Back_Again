@@ -107,7 +107,7 @@ int DFTVisualizer::AudioEngine::ServiceAudio_(const void* inputBuffer, void* out
 		}
 	}
 
-	renderer->currentBufferDFT_ = MyFDN::SimpleFFT_FFT(outputBuff);
+	// renderer->currentBufferDFT_ = MyFDN::SimpleFFT_FFT(outputBuff);
 
 	for (size_t i = 0; i < renderer->bufferSize; i++)
 	{

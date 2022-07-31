@@ -6,9 +6,6 @@
 #include <iostream>
 #include <array>
 
-#include "simple_fft/fft_settings.h"
-#include "simple_fft/fft.h"
-
 void MyFDN::SumSignals(std::vector<float>& out, const std::vector<float> other)
 {
 	assert(out.size() == other.size() && "Mismatching buffer sizes.");
@@ -175,8 +172,6 @@ void MyFDN::GaussianWhiteNoise(std::vector<float>& out, const size_t seed)
 
 std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& x, const size_t K)
 {
-	// DFT -> IDFT results in a signal that has only 1/4 of the specter of the input signal. Look into it.
-
 	const auto PrintProgress = [](const size_t k, const size_t K)->void
 	{
 		if (k % (K / 100) == 0)
@@ -207,29 +202,8 @@ std::vector<std::complex<float>> MyFDN::DFT(const std::vector<float>& x, const s
 	return y;
 }
 
-std::vector<std::complex<float>> MyFDN::SimpleFFT_FFT(std::vector<float>& input)
-{
-	if (!IsPowerOfTwo(input.size())) PadToNearestPowerOfTwo(input);
-
-	typedef std::vector<real_type> RealArray1D;
-	typedef std::vector<complex_type> ComplexArray1D;
-
-	ComplexArray1D out(input.size());
-	const char* errMsg = nullptr;
-
-	if (!simple_fft::FFT<RealArray1D, ComplexArray1D>(input, out, input.size(), errMsg))
-	{
-		std::cerr << "Failed to compute FFT: " << errMsg << std::endl;
-		throw;
-	}
-
-	return ComplexArray1D(out.begin(), out.begin() + out.size());
-}
-
 std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& y, const float N)
 {
-	// DFT -> IDFT results in a signal that has only 1/4 of the specter of the input signal. Look into it.
-
 	const auto PrintProgress = [](const size_t k, const size_t K)->void
 	{
 		if (k % (K / 100) == 0)
@@ -258,31 +232,6 @@ std::vector<float> MyFDN::IDFT(const std::vector<std::complex<float>>& y, const 
 	}
 
 	return x;
-}
-
-std::vector<float> MyFDN::SimpleFFT_IFFT(std::vector<std::complex<float>>& input)
-{
-	if (!IsPowerOfTwo(input.size())) PadToNearestPowerOfTwo(input);
-
-	typedef std::vector<real_type> RealArray1D;
-	typedef std::vector<complex_type> ComplexArray1D;
-
-	ComplexArray1D out(input.size());
-	const char* errMsg = nullptr;
-
-	if (!simple_fft::IFFT<ComplexArray1D>(input, out, input.size(), errMsg))
-	{
-		std::cerr << "Failed to compute FFT: " << errMsg << std::endl;
-		throw;
-	}
-
-	std::vector<float> returnVal(input.size());
-	for (size_t i = 0; i < input.size(); i++)
-	{
-		returnVal[i] = out[i].real();
-	}
-
-	return returnVal;
 }
 
 void MyFDN::PadToNearestPowerOfTwo(std::vector<std::complex<float>>& buffer)
@@ -341,4 +290,42 @@ bool MyFDN::IsPowerOfTwo(const size_t x)
 {
 	// Taken from: https://stackoverflow.com/questions/108318/how-can-i-test-whether-a-number-is-a-power-of-2
 	return (x & (x - 1)) == 0;
+}
+
+std::vector<std::complex<float>> MyFDN::FFT(const std::vector<std::complex<float>>& x)
+{
+	// Taken from: https://www.youtube.com/watch?v=h7apO7q16V0
+
+	using complex = std::complex<float>;
+	using complex_vector = std::vector<complex>;
+	constexpr const float PI = 3.14159265;
+
+	const size_t N = x.size();
+
+	if (N == 1) return x;
+
+	assert(IsPowerOfTwo(x.size()) && "Please pass an input with length of power of two.");
+
+	complex_vector even(N / 2, 0.0f);
+	complex_vector odd(N / 2, 0.0f);
+	for (size_t i = 0; i < N / 2; i++)
+	{
+		even[i] = x[2 * i];
+		odd[i] = x[2 * i + 1];
+	}
+
+	const auto evenTransform = FFT(even);
+	const auto oddTransform = FFT(odd);
+
+	complex_vector y(N, complex(0.0f, 0.0f));
+
+	for (size_t i = 0; i < N / 2; i++)
+	{
+		const auto w = EulersFormula(2.0f * PI * i * i / N);
+
+		y[i] = even[i] + w * odd[i];
+		y[i + N / 2] = even[i] - w * odd[i];
+	}
+
+	return y;
 }

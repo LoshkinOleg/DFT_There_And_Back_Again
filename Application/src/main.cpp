@@ -1,8 +1,8 @@
-#include "Filters.h"
+#include "FFT.h"
 
 int main()
 {
-	WriteFilteredWav("output.wav", 4.274f);
+	Run();
 
 	return 0;
 }

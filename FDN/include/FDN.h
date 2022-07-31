@@ -17,11 +17,7 @@ namespace MyFDN
 
 	std::vector<std::complex<float>> DFT(const std::vector<float>& x, const size_t K);
 
-	std::vector<std::complex<float>> SimpleFFT_FFT(std::vector<float>& input);
-
 	std::vector<float> IDFT(const std::vector<std::complex<float>>& y, const float N);
-
-	std::vector<float> SimpleFFT_IFFT(std::vector<std::complex<float>>& input);
 
 	void PadToNearestPowerOfTwo(std::vector<std::complex<float>>& buffer);
 
@@ -32,4 +28,6 @@ namespace MyFDN
 	std::complex<float> InverseEulersFormula(const float theta);
 	
 	bool IsPowerOfTwo(const size_t x);
+
+	std::vector<std::complex<float>> FFT(const std::vector<std::complex<float>>& x);
 }

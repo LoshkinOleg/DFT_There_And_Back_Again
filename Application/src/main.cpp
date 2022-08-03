@@ -1,8 +1,6 @@
-#include "FFT.h"
+#include <Application.h>
 
 int main()
 {
-	Run();
-
 	return 0;
 }

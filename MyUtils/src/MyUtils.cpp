@@ -14,6 +14,18 @@ void MyUtils::SumSignals(MyUtils::RealSignal& out, const MyUtils::RealSignal& ot
 	}
 }
 
+void MyUtils::InterleaveSignals(RealSignal& out, const RealSignal& first, const RealSignal& second)
+{
+	assert(2 * out.size() == first.size() + second.size() && first.size() == second.size() && "Mismatching buffer sizes.");
+
+	const size_t len = first.size();
+	for (size_t i = 0; i < len; ++i)
+	{
+		out[2 * i] = first[i];
+		out[2 * i + 1] = second[i];
+	}
+}
+
 std::vector<float> MyUtils::SumSignals(const MyUtils::RealSignal& first, const MyUtils::RealSignal& second)
 {
 	assert(first.size() == second.size() && "Mismatching buffer sizes.");

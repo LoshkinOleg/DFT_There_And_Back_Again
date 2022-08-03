@@ -19,14 +19,14 @@ namespace MyApp
 	public:
 
 		SdlManager() = delete;
-		SdlManager(const size_t displaySize);
+		SdlManager(const unsigned int displaySize);
 		~SdlManager();
 
 		void RegisterCallback(const Input input, std::function<void(void)> callback);
 
 		bool ProcessInputs();
 
-		const size_t displaySize;
+		const unsigned int displaySize;
 
 	private:
 		SDL_Event event_{};

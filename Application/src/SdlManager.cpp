@@ -1,6 +1,6 @@
 #include "SdlManager.h"
 
-MyApp::SdlManager::SdlManager(const size_t displaySize): displaySize(displaySize)
+MyApp::SdlManager::SdlManager(const unsigned int displaySize): displaySize(displaySize)
 {
 	auto err = SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 	assert(err == 0 && "SDL failed to initialize.");

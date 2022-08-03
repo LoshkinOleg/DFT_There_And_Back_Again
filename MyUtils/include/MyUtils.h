@@ -17,6 +17,11 @@ namespace MyUtils
 	void SumSignals(RealSignal& out, const RealSignal& other);
 
 	/**
+	* TODO: comment this
+	*/
+	void InterleaveSignals(RealSignal& out, const RealSignal& first, const RealSignal& second);
+
+	/**
 	* Sums two signals out-of-place. Signals must be of same length.
 	*
 	* @param first First signal to sum.

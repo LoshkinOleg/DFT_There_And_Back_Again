@@ -16,7 +16,7 @@ void MyUtils::SumSignals(MyUtils::RealSignal& out, const MyUtils::RealSignal& ot
 
 void MyUtils::InterleaveSignals(RealSignal& out, const RealSignal& first, const RealSignal& second)
 {
-	assert(2 * out.size() == first.size() + second.size() && first.size() == second.size() && "Mismatching buffer sizes.");
+	assert(out.size() == first.size() + second.size() && first.size() == second.size() && "Mismatching buffer sizes.");
 
 	const size_t len = first.size();
 	for (size_t i = 0; i < len; ++i)

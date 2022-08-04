@@ -11,7 +11,8 @@ namespace MyApp
 {
 	enum class Input: size_t
 	{
-		ESCAPE = SDL_SCANCODE_ESCAPE
+		ESCAPE = SDL_SCANCODE_ESCAPE,
+		SPACE = SDL_SCANCODE_SPACE
 	};
 
 	class SdlManager

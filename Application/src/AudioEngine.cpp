@@ -1,8 +1,10 @@
 #include "AudioEngine.h"
 
 #include <cassert>
-#include <thread>
 #include <iostream>
+#include <thread>
+
+#include <easy/profiler.h>
 
 #include "AssetManager.h"
 #include "MyUtils.h"
@@ -35,18 +37,11 @@ MyApp::Sound::Sound(const unsigned int bufferSize): bufferSize(bufferSize) {}
 
 void MyApp::Sound::Process_(std::vector<float>& outLeft, std::vector<float>& outRight)
 {
-	static float theta = 0.0f;
-	for (size_t i = 0; i < bufferSize; i++)
-	{
-		outLeft[i] = sinf(theta);
-		outRight[i] = outLeft[i];
-		theta += 0.01f;
-	}
-	return;
-
 	assert(outLeft.size() == outRight.size() && outRight.size() == bufferSize && "Invalid buffer sizes.");
 
-	if (paused || !IsPlaying()) return;
+	const bool playing = IsPlaying();
+
+	if (paused || !playing) return;
 
 	const unsigned int dataSize = (unsigned int)data.size();
 
@@ -156,8 +151,8 @@ MyApp::AudioEngine::AudioEngine(const unsigned int sampleRate, const unsigned in
 		(double)sampleRate,
 		(unsigned long)bufferSize,
 		paClipOff,
-		NULL, // Implementing blocking IO, no callback.
-		NULL
+		&ServiceAudio_,
+		this
 	);
 	if (err != paNoError) throw std::runtime_error(std::string("Failed to open a stream to default playback device: ") + Pa_GetErrorText(err));
 
@@ -207,42 +202,57 @@ void MyApp::AudioEngine::StopAll()
 	}
 }
 
-void MyApp::AudioEngine::ServiceAudio()
+int MyApp::AudioEngine::ServiceAudio_(const void* input, void* output,
+									   unsigned long frameCount,
+									   const PaStreamCallbackTimeInfo* timeInfo,
+									   PaStreamCallbackFlags statusFlags,
+									   void* userData)
 {
-	std::lock_guard<std::mutex> l(m_);
-	std::swap(frontBuffer_, backBuffer_);
-	
-	auto err = Pa_WriteStream(stream_, frontBuffer_.data(), bufferSize);
-	if (err != paNoError) throw std::runtime_error(std::string("Failed to service the audio: ") + Pa_GetErrorText(err));
-	
-	std::thread audioProcessThread([&]() { ProcessAudioAsync(); }); // Omnissiah forgive me.
-	audioProcessThread.detach();
-}
-void MyApp::AudioEngine::ProcessAudioAsync()
-{
-	// static float theta = 0.0f;
-	// for (size_t i = 0; i < bufferSize; i++)
-	// {
-	// 	backBuffer_[2 * i] = sinf(theta);
-	// 	backBuffer_[2 * i + 1] = backBuffer_[2 * i];
-	// 	theta += 0.01f;
-	// }
-	// return;
+	EASY_BLOCK("ServiceAudio_()");
 
-	std::lock_guard<std::mutex> l(m_);
+	auto self = (MyApp::AudioEngine*)userData;
+	std::lock_guard<std::mutex> l(self->m_);
+
+	std::swap(self->frontBuffer_, self->backBuffer_);
+	std::memcpy(output, self->frontBuffer_.data(), sizeof(float) * self->frontBuffer_.size());
+	self->processNextBuffer_ = true;
+
+	return paContinue;
+}
+void MyApp::AudioEngine::ProcessAudio()
+{
+	EASY_BLOCK("ProcessAudio()");
+
+	// Don't process unless the audio needs servicing. Acquire lock to check boolean. Note: I'm sure there's a better way to do this?
+	{
+		EASY_BLOCK("ProcessAudio(): checking bool");
+		std::lock_guard<std::mutex> l(m_);
+		if (!processNextBuffer_) return;
+	}
+
 	static std::vector<float> left(bufferSize);
 	static std::vector<float> right(bufferSize);
 	static std::vector<float> stereoSignal(2 * (size_t)bufferSize);
+	static std::vector<float> processedBackbuffer(2 * (size_t)bufferSize);
 
+	std::fill(processedBackbuffer.begin(), processedBackbuffer.end(), 0.0f);
 	for (size_t i = 0; i < sounds_.size(); ++i)
 	{
 		sounds_[i].Process_(left, right);
-		MyUtils::InterleaveSignals(stereoSignal, left, right);
-		MyUtils::SumSignals(backBuffer_, stereoSignal);
+		MyUtils::InterleaveSignals(stereoSignal, left, right); // Note: pretty sure you can rearrange things to move this method out of the for loop.
+		MyUtils::SumSignals(processedBackbuffer, stereoSignal);
 	}
 
 	for (size_t i = 0; i < postProcessFx_.size(); ++i)
 	{
-		// postProcessFx_[i](backBuffer_);
+		postProcessFx_[i](backBuffer_);
+	}
+
+	// Acquire lock and write to backbuffer.
+	{
+		EASY_BLOCK("ProcessAudio(): writing to backBuffer");
+		std::lock_guard<std::mutex> l(m_);
+		std::copy(processedBackbuffer.begin(), processedBackbuffer.end(), backBuffer_.begin());
+		processNextBuffer_ = false;
 	}
 }

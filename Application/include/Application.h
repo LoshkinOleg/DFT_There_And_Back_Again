@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Windows.h>
+#include <easy/profiler.h>
 
 #include "AssetManager.h"
 #include "SdlManager.h"
@@ -19,13 +19,22 @@ namespace MyApp
 
 		void Run()
 		{
+			EASY_PROFILER_ENABLE;
+
+			Init();
+
 			bool shutdown = false;
 			while (!shutdown)
 			{
+				EASY_BLOCK("Application's update");
 				shutdown = sdl_.ProcessInputs();
-				audioEngine_.ServiceAudio();
-				Sleep(33);
+				audioEngine_.ProcessAudio();
 			}
+
+#if BUILD_WITH_EASY_PROFILER
+			const auto success = profiler::dumpBlocksToFile((std::string(APPLICATION_PROFILER_OUTPUTS_DIR) + "session.prof").c_str());
+			if (!success) throw std::runtime_error(std::string("Failed to write easy profiler session to disk."));
+#endif
 		}
 
 	private:

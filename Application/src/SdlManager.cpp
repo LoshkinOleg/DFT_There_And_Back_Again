@@ -1,5 +1,7 @@
 #include "SdlManager.h"
 
+#include <easy/profiler.h>
+
 MyApp::SdlManager::SdlManager(const unsigned int displaySize): displaySize(displaySize)
 {
 	auto err = SDL_Init(SDL_INIT_TIMER | SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -22,6 +24,7 @@ void MyApp::SdlManager::RegisterCallback(const Input input, std::function<void(v
 
 bool MyApp::SdlManager::ProcessInputs()
 {
+	EASY_BLOCK("ProcessInputs()");
 	while (SDL_PollEvent(&event_))
 	{
 		switch (event_.type)

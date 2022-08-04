@@ -75,18 +75,14 @@ set_target_properties(Application PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${PROJECT
 
 # Make some folders we might need.
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/profilerOutputs) # Folder for holding easy_profiler's profiling data. file(MAKE_DIRECTORY <dir>) creates a new specified directiory if it doesn't exist yet.
-add_compile_definitions(APPLICATION_PROFILER_OUTPUTS_DIR=${${PROJECT_SOURCE_DIR}/profilerOutputs/}) # Add a define to easily write the profiler's output directory path in the code. add_compile_definitions(<define>) adds a solution-wide preprocessor definition to be used in the code.
+add_compile_definitions(APPLICATION_PROFILER_OUTPUTS_DIR="${PROJECT_SOURCE_DIR}/profilerOutputs/") # Add a define to easily write the profiler's output directory path in the code. add_compile_definitions(<define>) adds a solution-wide preprocessor definition to be used in the code.
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/wavOutputs) # Folder for holding wav file outputs that Application generates.
-add_compile_definitions(APPLICATION_WAV_OUTPUTS_DIR=${${PROJECT_SOURCE_DIR}/wavOutputs/}) # Add a define to easily write the wav output directory path in the code.
+add_compile_definitions(APPLICATION_WAV_OUTPUTS_DIR="${PROJECT_SOURCE_DIR}/wavOutputs/") # Add a define to easily write the wav output directory path in the code.
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/txtOutputs) # Folder for holding txt file outputs that Application generates.
-add_compile_definitions(APPLICATION_TXT_OUTPUTS_DIR=${${PROJECT_SOURCE_DIR}/txtOutputs/}) # Add a define to easily write the text output directory path in the code.
+add_compile_definitions(APPLICATION_TXT_OUTPUTS_DIR="${PROJECT_SOURCE_DIR}/txtOutputs/") # Add a define to easily write the text output directory path in the code.
 
 # Defining some options for the user to configure the desired behaviour of the generated programs.
 set(USE_EASY_PROFILER OFF CACHE BOOL "Whether to enable profiling with easy_profiler. Generated .prof files will be located under /profilerOutputs/") # set(<define> <default value> CACHE <variable type> <description>) creates a variable interactible in the CMake GUI.
 if (USE_EASY_PROFILER) # If the use of easy_profiler is desired, add a global preprocessor definition.
 	add_compile_definitions(BUILD_WITH_EASY_PROFILER) # BUILD_WITH_EASY_PROFILER is the define that the library's user must declare when they wish to use easy_profiler.
 endif()
-set(SAMPLE_RATE 8000 CACHE STRING "The rate at which all audio data is sampled.") # Global sample rate used throughout the solution. Note that CMake automatically converts the INT type to a STRING type and will display a warning about it, so we're just using STRING directly. Funky stuff can happen though since the user can enter a non-numerical value.
-add_compile_definitions(MYDFT_SAMPLE_RATE=${SAMPLE_RATE})
-set(BUFFER_SIZE 1024 CACHE STRING "The number of samples processed at a time for playback.") # Global audio buffer size used throughout the solution.
-add_compile_definitions(MYDFT_BUFFER_SIZE=${BUFFER_SIZE})

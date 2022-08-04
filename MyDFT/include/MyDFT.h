@@ -13,7 +13,7 @@ namespace MyDFT
 	* @param x Input real-valued signal. x.size() defines N.
 	* @param K Number of frequency bins that constitute the out signal. TODO: Figure out advice on sizing this. 2 * x I think?
 	*/
-	void DFT(MyUtils::ComplexSignal& out, const MyUtils::RealSignal& x, const MyUtils::uint K);
+	void DFT(MyUtils::ComplexSignal& out, const MyUtils::RealSignal& x, const MyUtils::uint K, const bool printProgress = true);
 
 	/**
 	* Discrete Fourier Transform. Computes the frequency-domain representation of a time-domain signal. Out-of-place version, meaning there is a dynamic memory allocation inside the function. Suitable for testing purposes.
@@ -32,7 +32,7 @@ namespace MyDFT
 	* @param y Input frequency bins, the frequency-domain representation of a signal. y.size() defines K.
 	* @param N Number of samples in the output real-valued signal out. Compute this as samplingFrequency * durationOfRealValuedSignal (as floats!). Setting this incorrectly results in a change in pitch.
 	*/
-	void IDFT(MyUtils::RealSignal& out, const MyUtils::ComplexSignal& y, const MyUtils::uint N);
+	void IDFT(MyUtils::RealSignal& out, const MyUtils::ComplexSignal& y, const MyUtils::uint N, const bool printProgress = true);
 
 	/**
 	* Inverse Discrete Fourier Transform. Computes the time-domain representation of a frequency-domain signal.

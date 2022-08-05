@@ -1,24 +1,22 @@
 #include <Application.h>
 
-#include "MyDFT.h"
+#include <cassert>
 
-void MyApp::Application::Init()
+void MyApp::Application::OnStart()
 {
-	auto& sound = audioEngine_.CreateSound("../resources/olegSpeech_8000Hz_32f_4_274sec.wav", assetManager_);
-
-	const size_t lowCutoffFrequency = 0;
-	const size_t highCutoffFrequency = 2000;
-	auto fourierTransform = MyDFT::DFT(sound.data, 2 * audioEngine_.sampleRate);
-	for (size_t i = lowCutoffFrequency; i <= highCutoffFrequency; i++)
-	{
-		// fourierTransform[i] = std::complex<float>(0.0f, 0.0f);
-	}
-	MyDFT::IDFT(sound.data, fourierTransform, sound.data.size());
+	auto& sound = audioEngine_.CreateSound("../resources/sine441_8000Hz_32f_1sec.wav", assetManager_);
 
 	sound.Play();
+}
 
-	// sound.looping = false;
-	// sdl_.RegisterCallback(Input::SPACE, [&sound]() { sound.Play(); });
+void MyApp::Application::OnUpdate()
+{
+
+}
+
+void MyApp::Application::OnShutdown()
+{
+
 }
 
 int main()

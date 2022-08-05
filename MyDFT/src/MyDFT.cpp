@@ -4,6 +4,11 @@
 
 #include "MyUtils.h"
 
+MyUtils::Complex EulersFormula(const float x)
+{
+	return std::complex<float>(std::cosf(x), std::sinf(x));
+}
+
 void MyDFT::DFT(MyUtils::ComplexSignal& out, const MyUtils::RealSignal& x, const MyUtils::uint K, const bool printProgress)
 {
 	const auto PrintProgress = [](const MyUtils::uint k, const MyUtils::uint K)->void
@@ -27,7 +32,7 @@ void MyDFT::DFT(MyUtils::ComplexSignal& out, const MyUtils::RealSignal& x, const
 
 		for (MyUtils::uint n = 0; n < N; ++n)
 		{
-			y[k] += x[n] * MyUtils::InverseEulersFormula(2.0f * MyUtils::PI * k * n / N);
+			y[k] += x[n] * EulersFormula(-2.0f * MyUtils::PI * k * n / N);
 		}
 	}
 
@@ -56,7 +61,7 @@ MyUtils::ComplexSignal MyDFT::DFT(const MyUtils::RealSignal& x, const MyUtils::u
 
 		for (MyUtils::uint n = 0; n < N; ++n)
 		{
-			y[k] += x[n] * MyUtils::InverseEulersFormula(2.0f * MyUtils::PI * k * n / N);
+			y[k] += x[n] * EulersFormula(-2.0f * MyUtils::PI * k * n / N);
 		}
 	}
 
@@ -88,7 +93,7 @@ void MyDFT::IDFT(MyUtils::RealSignal& out, const MyUtils::ComplexSignal& y, cons
 
 		for (MyUtils::uint k = 0; k < K; ++k)
 		{
-			x[n] += (y[k] * MyUtils::EulersFormula(2.0f * MyUtils::PI * k * n / N)).real();
+			x[n] += (y[k] * EulersFormula(2.0f * MyUtils::PI * k * n / N)).real();
 		}
 		x[n] /= N;
 	}
@@ -118,7 +123,7 @@ MyUtils::RealSignal MyDFT::IDFT(const MyUtils::ComplexSignal& y, const MyUtils::
 
 		for (MyUtils::uint k = 0; k < K; ++k)
 		{
-			x[n] += (y[k] * MyUtils::EulersFormula(2.0f * MyUtils::PI * k * n / N)).real();
+			x[n] += (y[k] * EulersFormula(2.0f * MyUtils::PI * k * n / N)).real();
 		}
 		x[n] /= N;
 	}

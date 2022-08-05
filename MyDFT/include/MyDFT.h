@@ -11,7 +11,7 @@ namespace MyDFT
 	* 
 	* @param out Output of the function, the frequency bins resulting from the DFT. Ensure out.size() is K before calling this function.
 	* @param x Input real-valued signal. x.size() defines N.
-	* @param K Number of frequency bins that constitute the out signal. TODO: Figure out advice on sizing this. 2 * x I think?
+	* @param K Number of frequency bins that constitute the out signal. Any value K < N results in spectral loss so for lossless transfomation use K = x.size().
 	*/
 	void DFT(MyUtils::ComplexSignal& out, const MyUtils::RealSignal& x, const MyUtils::uint K, const bool printProgress = true);
 
@@ -19,7 +19,7 @@ namespace MyDFT
 	* Discrete Fourier Transform. Computes the frequency-domain representation of a time-domain signal. Out-of-place version, meaning there is a dynamic memory allocation inside the function. Suitable for testing purposes.
 	*
 	* @param x Input real-valued signal. x.size() defines N.
-	* @param K Number of frequency bins that constitute the out signal. TODO: Figure out advice on sizing this. 2 * x I think?
+	* @param K Number of frequency bins that constitute the out signal. Any value K < N results in spectral loss so for lossless transfomation use K = x.size(). 
 	* @param printProgress Whether to putput % progression of the operation to standard output. Just a piece of mind since simple DFT takes a long time to compute.
 	* @return Output of the function, the frequency bins resulting from the DFT. ComplexSignal of size K.
 	*/

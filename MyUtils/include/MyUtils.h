@@ -61,24 +61,6 @@ namespace MyUtils
 	*/
 	void PadToNextPowerOfTwo(ComplexSignal& buffer);
 
-	// TODO: investigate
-	/**
-	* Applies Euler's formula: e^ix = cos(x) + i sin(x). Clockwise rotation in the Argand plane.
-	*
-	* @param x Real to apply the formula on.
-	* @return Complex number resulting from the formula.
-	*/
-	Complex EulersFormula(const float x);
-
-	// TODO: investigate
-	/**
-	* Applies Euler's formula: e^-ix = cos(x) - i sin(x). Counter-clockwise rotation in the Argand plane.
-	*
-	* @param x Real to apply the formula on.
-	* @return Complex number resulting from the formula.
-	*/
-	Complex InverseEulersFormula(const float theta);
-
 	/**
 	* Checks whether a number is a power of two.
 	* 

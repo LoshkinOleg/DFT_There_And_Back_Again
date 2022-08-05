@@ -6,6 +6,8 @@
 
 #include <portaudio.h>
 
+// TODO: implement circular buffer.
+
 namespace MyApp
 {
 	class AssetManager;
@@ -27,6 +29,15 @@ namespace MyApp
 		inline bool IsPlaying() const
 		{
 			return currentBegin_ < data.size();
+		}
+
+		inline unsigned int GetCurrentBegin() const
+		{
+			return currentBegin_;
+		}
+		inline unsigned int GetCurrentEnd() const
+		{
+			return currentEnd_;
 		}
 
 		bool looping = true;

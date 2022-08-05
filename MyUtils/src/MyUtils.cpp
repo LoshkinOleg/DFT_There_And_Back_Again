@@ -105,16 +105,6 @@ void MyUtils::PadToNextPowerOfTwo(MyUtils::ComplexSignal& buffer)
 	buffer.insert(buffer.end(), nrOfNewElements, std::complex<float>(0.0f, 0.0f));
 }
 
-MyUtils::Complex MyUtils::EulersFormula(const float x)
-{
-	return std::complex<float>(std::cosf(x), std::sinf(x));
-}
-
-MyUtils::Complex MyUtils::InverseEulersFormula(const float x)
-{
-	return std::complex<float>(std::cosf(x), -std::sinf(x));
-}
-
 bool MyUtils::IsPowerOfTwo(const MyUtils::uint x)
 {
 	// Taken from: https://stackoverflow.com/questions/108318/how-can-i-test-whether-a-number-is-a-power-of-2

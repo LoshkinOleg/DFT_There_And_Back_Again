@@ -6,6 +6,9 @@
 
 #include <SDL.h>
 #undef main
+#include <imgui.h>
+#include <imgui_impl_sdl.h>
+#include <imgui_impl_sdlrenderer.h>
 
 namespace MyApp
 {
@@ -23,9 +26,10 @@ namespace MyApp
 		SdlManager(const unsigned int displaySize);
 		~SdlManager();
 
-		void RegisterCallback(const Input input, std::function<void(void)> callback);
+		void RegisterInputCallback(const Input input, std::function<void(void)> callback);
+		void RegisterImguiCallback(std::function<void(void)> callback);
 
-		bool ProcessInputs();
+		bool Update();
 
 		const unsigned int displaySize;
 
@@ -33,6 +37,9 @@ namespace MyApp
 		SDL_Event event_{};
 		SDL_Window* pWindow_ = nullptr;
 		SDL_Renderer* pRenderer_ = nullptr;
-		std::map<Input, std::vector<std::function<void(void)>>> callbacks_;
+		std::map<Input, std::vector<std::function<void(void)>>> inputCallbacks_;
+		std::vector<std::function<void(void)>> imguiCallbacks_;
+
+		ImGuiContext* pImguiContext_ = nullptr;
 	};
 }

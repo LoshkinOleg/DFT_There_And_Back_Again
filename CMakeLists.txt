@@ -57,6 +57,7 @@ target_include_directories(Application PRIVATE # Privately add external interfac
 	${PROJECT_SOURCE_DIR}/MyUtils/include/ # Our own utility static library.
 	${PROJECT_SOURCE_DIR}/MyDFT/include/ # Our own DFT static library.
 	${PROJECT_SOURCE_DIR}/Application/include/ # Target's own interface.
+	${PROJECT_SOURCE_DIR}/thirdparty/imgui/include/ # Imgui interface.
 	${PROJECT_SOURCE_DIR}/thirdparty/dr_wav/include/ # Header-only library for reading and writing .wav files.
 	${PROJECT_SOURCE_DIR}/thirdparty/easy_profiler/include/ # Open-source and easy to add to a project profiling library.
 	${PROJECT_SOURCE_DIR}/thirdparty/portaudio/include/ # Open-source cross-platform library for interacting with audio devices.

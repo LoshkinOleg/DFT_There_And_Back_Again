@@ -1,12 +1,17 @@
 #include <Application.h>
 
-#include <cassert>
+#include <imgui.h>
 
 void MyApp::Application::OnStart()
 {
-	auto& sound = audioEngine_.CreateSound("../resources/sine441_8000Hz_32f_1sec.wav", assetManager_);
+	sdl_.RegisterImguiCallback([]()
+	{
+		ImGui::Begin("Hello, world!");
 
-	sound.Play();
+		ImGui::Text("This is some useful text.");
+
+		ImGui::End();
+	});
 }
 
 void MyApp::Application::OnUpdate()

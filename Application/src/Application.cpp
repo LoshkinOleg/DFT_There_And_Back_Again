@@ -14,7 +14,7 @@ void MyApp::Application::Run()
 	while (!shutdown)
 	{
 		EASY_BLOCK("Application's update");
-		shutdown = sdl_.ProcessInputs();
+		shutdown = sdl_.Update();
 		audioEngine_.ProcessAudio();
 		OnUpdate();
 	}

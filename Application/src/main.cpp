@@ -1,5 +1,7 @@
 #include <Application.h>
 
+#include <iostream>
+
 #include <imgui.h>
 
 void MyApp::Application::OnStart()

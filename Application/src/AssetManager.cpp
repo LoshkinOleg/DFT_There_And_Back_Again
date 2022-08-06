@@ -2,7 +2,6 @@
 
 #include <fstream>
 #include <cstdlib>
-#include <string_view>
 
 #define DR_WAV_IMPLEMENTATION
 #include "dr_wav.h"
@@ -154,13 +153,13 @@ bool MyApp::AssetManager::ReadCarr(std::vector<float>& out, const char* path)
 
 	// Find out the size of the c array.
 	const size_t sizeIdxBegin = line.find('[') + 1;
-	const size_t sizeIdxEnd = line.find(']' - 1);
+	const size_t sizeIdxEnd = line.find(']') - 1;
 	assert(sizeIdxBegin - 1 != std::string::npos && "Couldn't find string begin index of the size of the c array.");
 	assert(sizeIdxEnd + 1 != std::string::npos && "Couldn't find string end index of the size of the c array.");
 	
 	size_t len;
 	{
-		const auto success = StringToInt(line.substr(sizeIdxBegin, sizeIdxEnd).c_str(), len);
+		const auto success = StringToInt(line.substr(sizeIdxBegin, sizeIdxEnd - sizeIdxBegin + 1).c_str(), len);
 		assert(success && "Failed to c array size string as an integer.");
 	}
 	
@@ -172,9 +171,9 @@ bool MyApp::AssetManager::ReadCarr(std::vector<float>& out, const char* path)
 		std::getline(file, line);
 		assert(!line.empty() && "Retireved an empty line from c array.");
 
-		const auto realStr = std::string_view(line.begin(), line.end() - 1).data();
+		const auto realStr = line.substr(0, line.end() - line.begin() - 1);
 
-		success = StringToFloat(realStr, out[i]);
+		success = StringToFloat(realStr.c_str(), out[i]);
 		assert(success && "Failed to parse float string.");
 	}
 
@@ -198,13 +197,13 @@ bool MyApp::AssetManager::ReadCarr(std::vector<std::complex<float>>& out, const 
 
 	// Find out the size of the c array.
 	const size_t sizeIdxBegin = line.find('[') + 1;
-	const size_t sizeIdxEnd = line.find(']' - 1);
+	const size_t sizeIdxEnd = line.find(']') - 1;
 	assert(sizeIdxBegin - 1 != std::string::npos && "Couldn't find string begin index of the size of the c array.");
 	assert(sizeIdxEnd + 1 != std::string::npos && "Couldn't find string end index of the size of the c array.");
 
 	size_t len;
 	{
-		const auto success = StringToInt(line.substr(sizeIdxBegin, sizeIdxEnd).c_str(), len);
+		const auto success = StringToInt(line.substr(sizeIdxBegin, sizeIdxEnd - sizeIdxBegin + 1).c_str(), len);
 		assert(success && "Failed to c array size string as an integer.");
 	}
 
@@ -221,13 +220,13 @@ bool MyApp::AssetManager::ReadCarr(std::vector<std::complex<float>>& out, const 
 		sepIdx = line.find(',');
 		assert(sepIdx != std::string::npos && "Couldn't find a separator in c array entry of complex numbers.");
 
-		const auto realStr = std::string_view(line.begin(), line.begin() + sepIdx - 1).data();
-		const auto imagStr = std::string_view(line.begin() + sepIdx + 1, line.end() - 1).data();
+		const auto realStr = line.substr(1, sepIdx - 1);
+		const auto imagStr = line.substr(sepIdx + 1, line.size() - sepIdx - 3);
 
-		success = StringToFloat(realStr, real);
+		success = StringToFloat(realStr.c_str(), real);
 		assert(success && "Failed to parse complex number string.");
 
-		success = StringToFloat(imagStr, imag);
+		success = StringToFloat(imagStr.c_str(), imag);
 		assert(success && "Failed to parse complex number string.");
 
 		out[i] = std::complex<float>(real, imag);

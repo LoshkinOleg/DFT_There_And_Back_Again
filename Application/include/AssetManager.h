@@ -21,6 +21,8 @@ namespace MyApp
 		static bool WriteWav(const std::vector<float>& data, const char* path, const unsigned int nrOfChannels, const unsigned int sampleRate);
 		static bool WriteCarr(const std::vector<float>& data, const char* path);
 		static bool WriteCarr(const std::vector<std::complex<float>>& data, const char* path);
+		static bool ReadCarr(std::vector<float>& out, const char* path);
+		static bool ReadCarr(std::vector<std::complex<float>>& out, const char* path);
 
 	private:
 		std::vector<AudioAsset> audioAssets_;

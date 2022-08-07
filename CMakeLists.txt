@@ -81,6 +81,7 @@ file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/wavOutputs) # Folder for holding wav f
 add_compile_definitions(APPLICATION_WAV_OUTPUTS_DIR="${PROJECT_SOURCE_DIR}/wavOutputs/") # Add a define to easily write the wav output directory path in the code.
 file(MAKE_DIRECTORY ${PROJECT_SOURCE_DIR}/txtOutputs) # Folder for holding txt file outputs that Application generates.
 add_compile_definitions(APPLICATION_TXT_OUTPUTS_DIR="${PROJECT_SOURCE_DIR}/txtOutputs/") # Add a define to easily write the text output directory path in the code.
+add_compile_definitions(APPLICATION_RESOURCES_DIR="${PROJECT_SOURCE_DIR}/resources/")
 
 # Defining some options for the user to configure the desired behaviour of the generated programs.
 set(USE_EASY_PROFILER OFF CACHE BOOL "Whether to enable profiling with easy_profiler. Generated .prof files will be located under /profilerOutputs/") # set(<define> <default value> CACHE <variable type> <description>) creates a variable interactible in the CMake GUI.

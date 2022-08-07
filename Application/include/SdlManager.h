@@ -28,8 +28,13 @@ namespace MyApp
 
 		void RegisterInputCallback(const Input input, std::function<void(void)> callback);
 		void RegisterImguiCallback(std::function<void(void)> callback);
+		void RegisterRenderCallback(std::function<void(void)> callback);
 
 		bool Update();
+
+		void RenderRealSignal(const std::vector<float>& signal);
+		void RenderPoint(const float x, const float y);
+		void RenderLine(const float x0, const float y0, const float x1, const float y1);
 
 		const unsigned int displaySize;
 
@@ -39,6 +44,7 @@ namespace MyApp
 		SDL_Renderer* pRenderer_ = nullptr;
 		std::map<Input, std::vector<std::function<void(void)>>> inputCallbacks_;
 		std::vector<std::function<void(void)>> imguiCallbacks_;
+		std::vector<std::function<void(void)>> renderCallbacks_;
 
 		ImGuiContext* pImguiContext_ = nullptr;
 	};

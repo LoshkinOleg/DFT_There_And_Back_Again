@@ -4,7 +4,7 @@
 // - Fix in stb_textedit_discard_redo (see https://github.com/nothings/stb/issues/321)
 // Grep for [DEAR IMGUI] to find the changes.
 
-// stb_textedit.h - v1.14  - public domain - Sean Barrett
+// stb_textedit.h - y.14  - public domain - Sean Barrett
 // Development of this library was sponsored by RAD Game Tools
 //
 // This C header file implements the guts of a multi-line text-editing

@@ -3,43 +3,35 @@
 #include <string>
 #include <cassert>
 #include <iostream>
-
-#include <imgui.h>
+#include <array>
 
 struct Vec2
 {
-	float v0 = 0;
-	float v1 = 0;
+	float x = 0;
+	float y = 0;
 };
 
 struct Vec3
 {
-	float v0 = 0;
-	float v1 = 0;
-	float v2 = 0;
+	float x = 0;
+	float y = 0;
+	float z = 0;
 };
 
 struct Vec4
 {
-	float v0 = 0;
-	float v1 = 0;
-	float v2 = 0;
-	float v3 = 1;
+	float x = 0;
+	float y = 0;
+	float z = 0;
+	float w = 1; // 1 by default since that's what we usually need when dealing with 4x4 transform matrices.
 
 	inline bool operator==(const Vec4& other) const
 	{
-		return	v0 == other.v0 &&
-				v1 == other.v1 &&
-				v2 == other.v2 &&
-				v3 == other.v3;
+		return	x == other.x &&
+				y == other.y &&
+				z == other.z &&
+				w == other.w;
 	}
-};
-
-struct Mat3x3
-{
-	float m00 = 1.0f; float m01 = 0.0f; float m02 = 0.0f;
-	float m10 = 0.0f; float m11 = 1.0f; float m12 = 0.0f;
-	float m20 = 0.0f; float m21 = 0.0f; float m22 = 1.0f;
 };
 
 struct Mat4x4
@@ -73,15 +65,17 @@ inline Vec4 MatrixVectorMultiplication(const Mat4x4 a, const Vec4 b)
 {
 	return
 	{
-		a.m00 * b.v0 + a.m01 * b.v1 + a.m02 * b.v2 + a.m03 * b.v3,
-		a.m10 * b.v0 + a.m11 * b.v1 + a.m12 * b.v2 + a.m13 * b.v3,
-		a.m20 * b.v0 + a.m21 * b.v1 + a.m22 * b.v2 + a.m23 * b.v3,
-		a.m30 * b.v0 + a.m31 * b.v1 + a.m32 * b.v2 + a.m33 * b.v3
+		a.m00 * b.x + a.m01 * b.y + a.m02 * b.z + a.m03 * b.w,
+		a.m10 * b.x + a.m11 * b.y + a.m12 * b.z + a.m13 * b.w,
+		a.m20 * b.x + a.m21 * b.y + a.m22 * b.z + a.m23 * b.w,
+		a.m30 * b.x + a.m31 * b.y + a.m32 * b.z + a.m33 * b.w
 	};
 }
 
-Mat4x4 OrthogonalProjectionMatrix(const float near, const float far, const float right, const float left, const float bottom, const float top)
+constexpr inline Mat4x4 OrthogonalProjectionMatrix(const float near, const float far, const float right, const float left, const float bottom, const float top)
 {
+	// Taken from: https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/orthographic-projection-matrix
+
 	return
 	{
 		2.0f/(right-left),	0.0f,				0.0f,				-(right+left)/(right-left),
@@ -91,15 +85,9 @@ Mat4x4 OrthogonalProjectionMatrix(const float near, const float far, const float
 	};
 }
 
-inline float Sine(const float sampleIdx, const float sampleRate, const float frequency)
-{
-	assert(sampleIdx >= 0.0f && sampleRate > 0.0f && frequency > 0.0f && frequency < sampleRate / 2.0f && "Invalid Sine() parameters.");
-	return std::sinf(sampleIdx * (2.0f * 3.14159265359f / sampleRate) * frequency);
-}
-
 void PrintVec(const Vec4& v)
 {
-	std::cout << "(" << std::to_string(v.v0) << " ; " << std::to_string(v.v1) << " ; " << std::to_string(v.v2) << " ; " << std::to_string(v.v3) << ")" << std::endl;
+	std::cout << "(" << std::to_string(v.x) << " ; " << std::to_string(v.y) << " ; " << std::to_string(v.z) << " ; " << std::to_string(v.w) << ")" << std::endl;
 }
 
 void PrintMat(const Mat4x4& m)
@@ -110,96 +98,223 @@ void PrintMat(const Mat4x4& m)
 	std::cout << std::to_string(m.m30) << " ; " << std::to_string(m.m31) << " ; " << std::to_string(m.m32) << " ; " << std::to_string(m.m33) << ";\n)" << std::endl;
 }
 
-// Taken from: https://www.geeksforgeeks.org/window-to-viewport-transformation-in-computer-graphics-with-implementation/
-// Function for window to viewport transformation
-Vec2 WindowtoViewport(float x_w, float y_w, float x_wmax,
-					   float y_wmax, float x_wmin, float y_wmin,
-					  float x_vmax, float y_vmax, float x_vmin,
-					   float y_vmin)
+// Following 3DTI's coordinate convention... really should have followed the mathematical right-hand convention instead... oh well.
+constexpr const Vec3 FRONT = { 1.0f, 0.0f, 0.0f };
+constexpr const Vec3 LEFT = { 0.0f, 1.0f, 0.0f };
+constexpr const Vec3 UP = { 0.0f, 0.0f, 1.0f };
+
+// Box volume used for orthogonal projection.
+struct Box
 {
-	// point on viewport
-	float x_v, y_v;
+	float back =	-1.0f; // -X
+	float front =	 1.0f; // +X
+	float right =	-1.0f; // -Y
+	float left =	 1.0f; // +Y
+	float bottom =	-1.0f; // -Z
+	float top =		 1.0f; // +Z
+};
 
-	// scaling factors for x coordinate and y coordinate
-	float sx, sy;
+// Triangles composing a cube with origin at 0,0,0 and side len of 2. CCW winding for front-facing triangles, CW for back-facing triangles.
+constexpr const std::array<float, 3 * 3 * 2 * 6> CUBE =
+{
+	// Back face.
+	-1.0f,-1.0f,-1.0f,
+	-1.0f,-1.0f,+1.0f,
+	-1.0f,+1.0f,+1.0f,
 
-	// calculating Sx and Sy
-	sx = (float)(x_vmax - x_vmin) / (x_wmax - x_wmin);
-	sy = (float)(y_vmax - y_vmin) / (y_wmax - y_wmin);
+	-1.0f,-1.0f,-1.0f,
+	-1.0f,+1.0f,+1.0f,
+	-1.0f,+1.0f,-1.0f,
 
-	// calculating the point on viewport
-	x_v = x_vmin + (float)((x_w - x_wmin) * sx);
-	y_v = y_vmin + (float)((y_w - y_wmin) * sy);
+	// Right face.
+	-1.0f,-1.0f,-1.0f,
+	+1.0f,-1.0f,-1.0f,
+	+1.0f,-1.0f,+1.0f,
 
-	return {x_v, y_v};
+	-1.0f,-1.0f,-1.0f,
+	+1.0f,-1.0f,+1.0f,
+	-1.0f,-1.0f,+1.0f,
+
+	// Front face.
+	+1.0f,-1.0f,-1.0f,
+	+1.0f,+1.0f,-1.0f,
+	+1.0f,-1.0f,+1.0f,
+
+	+1.0f,+1.0f,-1.0f,
+	+1.0f,+1.0f,+1.0f,
+	+1.0f,-1.0f,+1.0f,
+
+	// Left face.
+	+1.0f,+1.0f,-1.0f,
+	-1.0f,+1.0f,-1.0f,
+	-1.0f,+1.0f,+1.0f,
+
+	+1.0f,+1.0f,-1.0f,
+	-1.0f,+1.0f,+1.0f,
+	+1.0f,+1.0f,+1.0f,
+
+	// Bottom face.
+	+1.0f,-1.0f,-1.0f,
+	-1.0f,-1.0f,-1.0f,
+	+1.0f,+1.0f,-1.0f,
+
+	+1.0f,+1.0f,-1.0f,
+	-1.0f,-1.0f,-1.0f,
+	-1.0f,+1.0f,-1.0f,
+
+	// Top face.
+	-1.0f,+1.0f,+1.0f,
+	-1.0f,-1.0f,+1.0f,
+	+1.0f,-1.0f,+1.0f,
+
+	-1.0f,+1.0f,+1.0f,
+	+1.0f,-1.0f,+1.0f,
+	+1.0f,+1.0f,+1.0f
+};
+
+inline Mat4x4 RotationMatrix(const float yaw, const float pitch, const float roll)
+{
+	// Taken from: https://en.wikipedia.org/wiki/Rotation_matrix
+
+	const float cosa = std::cosf(yaw);
+	const float sina = std::sinf(yaw);
+	const float cosb = std::cosf(pitch);
+	const float sinb = std::sinf(pitch);
+	const float cosy = std::cosf(roll);
+	const float siny = std::sinf(roll);
+
+	return
+	{
+		cosb*cosy,		sina*sinb*cosy - cosa*siny,		cosa*sinb*cosy + sina*siny,		0.0f,
+		cosb*siny,		sina*sinb*siny + cosa*cosy,		cosa*sinb*siny - sina*cosy,		0.0f,
+		-sinb,			sina*cosb,						cosa*cosb,						0.0f,
+		0.0f,			0.0f,							0.0f,							1.0f
+	};
 }
 
 void MyApp::Application::OnStart()
 {
-	// sdl_.RegisterImguiCallback([&]()
-	// {
-	// 	ImGui::Begin("Hello, world!");
-	// 
-	// 	ImGui::End();
-	// });
-
-	// 441 Hz sine at 8000 Hz sample rate.
-	static std::vector<float> sine(8000, 0.0f);
-	for (size_t i = 0; i < 8000; i++)
-	{
-		sine[i] = Sine(i, 8000, 441);
-	}
-
-	// auto& sound = audioEngine_.CreateSound(sine);
-	// sound.Play();
-
-	// Pos xyz: (1.0f, 0.33f, -0.33f), rotation xyz: (90°, 0°, 0°)
-	// const static Mat4x4 modelMatrix =
-	// {
-	// 	1.0f,	 0.0f,	  0.0f,		 2.0f,
-	// 	0.0f,	 0.0f,	 -1.0f,		 0.33f,
-	// 	0.0f,	 1.0f,	  0.0f,		-0.33f,
-	// 	0.0f,	 0.0f,	  0.0f,		 1.0f
-	// };
-	// y = 1 = down; x = 1 = left
-	const static Mat4x4 modelMatrix =
-	{
-		1.0f,	 -1.0f,	  0.0f,			0.0f,
-		0.7f,	 0.0f,	  -0.7f,		0.0f,
-		0.7f,	 0.0f,	  0.7f,			0.0f,
-		0.0f,	 0.0f,	  0.0f,			1.0f
-	};
-
-	const static Mat4x4 projMat = OrthogonalProjectionMatrix(0.01f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f);
-
-	static Mat4x4 viewMatrix{};
-	
 	sdl_.RegisterRenderCallback([&]()
 	{
-		const auto IsWithinBounds = [](const Vec4 p)->bool
+		constexpr const float PI = 3.14159265359f;
+		constexpr const Box BOUNDS{ -2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f };
+		constexpr const static Mat4x4 ORTHO_PROJ_MAT = OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top);
+		constexpr const static Mat4x4 VIEW_MAT{}; // Immobile view placed at origin with no rotation.
+
+		// Start with a cube of scale 1.0, placed at origin and pitched slightly towards the viewer.
+		const static Mat4x4 modelMat = RotationMatrix(0.0f, PI / 12, 0.0f);
+
+		static float theta = 0.0f;
+		const Mat4x4 rotation = RotationMatrix(0.0f, 0.0f, theta); // This frame's yaw rotation.
+
+		// Draw triangles.
+		for (size_t i = 0; i < CUBE.size() - 9; i += 9)
 		{
-			return	p.v0 >= 0.0f && p.v0 <= 1.0f &&
-					p.v1 >= 0.0f && p.v1 <= 1.0f &&
-					p.v2 == 0.0f &&
-					p.v3 == 1.0f;
-		};
+			Vec4 pt0, pt1, pt2; // World position.
+			// Single vertices.
+			pt0 = {CUBE[i], CUBE[i + 1], CUBE[i + 2], 1.0f};
+			pt1 = {CUBE[i + 3], CUBE[i + 4], CUBE[i + 5], 1.0f};
+			pt2 = {CUBE[i + 6], CUBE[i + 7], CUBE[i + 8], 1.0f};
 
-		for (size_t i = 0; i < 8000; i++)
-		{
-			// Vec4 point = {std::cosf(sine[i]), std::sinf(sine[i]), i / 8000.0f, 1.0f};
-			// // PrintVec(point);
-			// // PrintMat(modelMatrix);
-			// point = MatrixVectorMultiplication(modelMatrix, point);
-			// // PrintVec(point);
-			// point = MatrixVectorMultiplication(viewMatrix, point);
-			// point = MatrixVectorMultiplication(projMat, point);
-			// Vec3 normalizedDeviceCoord = {point.v0 / point.v3, point.v1 / point.v3, point.v2 / point.v3};
-			// Vec2 screenCoord = WindowtoViewport(normalizedDeviceCoord.v0, normalizedDeviceCoord.v1, 2.0f, 2.0f, -2.0f, -2.0f, 1.0f, 1.0f, 0.0f, 0.0f);
-			
-			// sdl_.RenderPoint(screenCoord.v0, screenCoord.v1);
+			// To model space.
+			pt0 = MatrixVectorMultiplication(modelMat, pt0);
+			pt1 = MatrixVectorMultiplication(modelMat, pt1);
+			pt2 = MatrixVectorMultiplication(modelMat, pt2);
 
+			// Rotate the cube around the Z axis.
+			pt0 = MatrixVectorMultiplication(rotation, pt0);
+			pt1 = MatrixVectorMultiplication(rotation, pt1);
+			pt2 = MatrixVectorMultiplication(rotation, pt2);
 
+			// To view space.
+			pt0 = MatrixVectorMultiplication(VIEW_MAT, pt0);
+			pt1 = MatrixVectorMultiplication(VIEW_MAT, pt1);
+			pt2 = MatrixVectorMultiplication(VIEW_MAT, pt2);
+
+			// To clip space.
+			pt0 = MatrixVectorMultiplication(ORTHO_PROJ_MAT, pt0);
+			pt1 = MatrixVectorMultiplication(ORTHO_PROJ_MAT, pt1);
+			pt2 = MatrixVectorMultiplication(ORTHO_PROJ_MAT, pt2);
+
+			// Cull points outside the viewing volume.
+			if (pt0.x < BOUNDS.back || pt0.x > BOUNDS.front ||
+				pt0.y < BOUNDS.right || pt0.y > BOUNDS.left ||
+				pt0.z < BOUNDS.bottom || pt0.z > BOUNDS.top) continue;
+			if (pt1.x < BOUNDS.back || pt1.x > BOUNDS.front ||
+				pt1.y < BOUNDS.right || pt1.y > BOUNDS.left ||
+				pt1.z < BOUNDS.bottom || pt1.z > BOUNDS.top) continue;
+			if (pt2.x < BOUNDS.back || pt2.x > BOUNDS.front ||
+				pt2.y < BOUNDS.right || pt2.y > BOUNDS.left ||
+				pt2.z < BOUNDS.bottom || pt2.z > BOUNDS.top) continue;
+
+			// Perspective divide. Yields culled normal device coordinates.
+			const Vec3 ndcPt0 =
+			{
+				pt0.x / pt0.w, pt0.y / pt0.w, pt0.z / pt0.w
+			};
+			const Vec3 ndcPt1 =
+			{
+				pt1.x / pt1.w, pt1.y / pt1.w, pt1.z / pt1.w
+			};
+			const Vec3 ndcPt2 =
+			{
+				pt2.x / pt2.w, pt2.y / pt2.w, pt2.z / pt2.w
+			};
+			assert(abs(ndcPt0.x) >= 0.0f && abs(ndcPt0.x) <= 1.0f &&
+				   abs(ndcPt0.y) >= 0.0f && abs(ndcPt0.y) <= 1.0f &&
+				   abs(ndcPt0.z) >= 0.0f && abs(ndcPt0.z) <= 1.0f && "Ndc coordinate lies outside the bounds of the viewing volume.");
+			assert(abs(ndcPt1.x) >= 0.0f && abs(ndcPt1.x) <= 1.0f &&
+				   abs(ndcPt1.y) >= 0.0f && abs(ndcPt1.y) <= 1.0f &&
+				   abs(ndcPt1.z) >= 0.0f && abs(ndcPt1.z) <= 1.0f && "Ndc coordinate lies outside the bounds of the viewing volume.");
+			assert(abs(ndcPt2.x) >= 0.0f && abs(ndcPt2.x) <= 1.0f &&
+				   abs(ndcPt2.y) >= 0.0f && abs(ndcPt2.y) <= 1.0f &&
+				   abs(ndcPt2.z) >= 0.0f && abs(ndcPt2.z) <= 1.0f && "Ndc coordinate lies outside the bounds of the viewing volume.");
+
+			// Clip to window coords following "Viewport transform" section of: https://www.khronos.org/opengl/wiki/Viewport_Transform (note: adjusted to fit my coordinate convention). Yields Window coordinates.
+			const Vec3 windowPt0 =
+			{
+				(1.0f - 0.0f)		* 0.5f * ndcPt0.x + 0 + (1.0f + 0.0f)		* 0.5f,
+				sdl_.displaySize	* 0.5f * ndcPt0.y + 0 + sdl_.displaySize	* 0.5f,
+				sdl_.displaySize	* 0.5f * ndcPt0.z + 0 + sdl_.displaySize	* 0.5f
+			};
+			const Vec3 windowPt1 =
+			{
+				(1.0f - 0.0f)		* 0.5f * ndcPt1.x + 0 + (1.0f + 0.0f)		* 0.5f,
+				sdl_.displaySize	* 0.5f * ndcPt1.y + 0 + sdl_.displaySize	* 0.5f,
+				sdl_.displaySize	* 0.5f * ndcPt1.z + 0 + sdl_.displaySize	* 0.5f
+			};
+			const Vec3 windowPt2 =
+			{
+				(1.0f - 0.0f)		* 0.5f * ndcPt2.x + 0 + (1.0f + 0.0f)		* 0.5f,
+				sdl_.displaySize	* 0.5f * ndcPt2.y + 0 + sdl_.displaySize	* 0.5f,
+				sdl_.displaySize	* 0.5f * ndcPt2.z + 0 + sdl_.displaySize	* 0.5f
+			};
+			assert(windowPt0.y >= 0.0f && windowPt0.y <= sdl_.displaySize &&
+				   windowPt0.z >= 0.0f && windowPt0.z <= sdl_.displaySize && "Window point lies outside the screen's bounds.");
+			assert(windowPt1.y >= 0.0f && windowPt1.y <= sdl_.displaySize &&
+				   windowPt1.z >= 0.0f && windowPt1.z <= sdl_.displaySize && "Window point lies outside the screen's bounds.");
+			assert(windowPt2.y >= 0.0f && windowPt2.y <= sdl_.displaySize &&
+				   windowPt2.z >= 0.0f && windowPt2.z <= sdl_.displaySize && "Window point lies outside the screen's bounds.");
+
+			// For us, +Y is right, for SDL, right is +X. For us, +Z is up, for SDL, up is -Y. Hence the conversions.
+			const Vec2 screenPt0 = {windowPt0.y, sdl_.displaySize - windowPt0.z};
+			const Vec2 screenPt1 = {windowPt1.y, sdl_.displaySize - windowPt1.z};
+			const Vec2 screenPt2 = {windowPt2.y, sdl_.displaySize - windowPt2.z};
+			constexpr const float RECT_WIDTH = 6.0f;
+
+			// Draw vertices.
+			sdl_.RenderFilledRect(screenPt0.x - RECT_WIDTH * 0.5f, screenPt0.x + RECT_WIDTH * 0.5f, screenPt0.y - RECT_WIDTH * 0.5f, screenPt0.y + RECT_WIDTH * 0.5f);
+			sdl_.RenderFilledRect(screenPt1.x - RECT_WIDTH * 0.5f, screenPt1.x + RECT_WIDTH * 0.5f, screenPt1.y - RECT_WIDTH * 0.5f, screenPt1.y + RECT_WIDTH * 0.5f);
+			sdl_.RenderFilledRect(screenPt2.x - RECT_WIDTH * 0.5f, screenPt2.x + RECT_WIDTH * 0.5f, screenPt2.y - RECT_WIDTH * 0.5f, screenPt2.y + RECT_WIDTH * 0.5f);
+
+			// Draw edges.
+			sdl_.RenderLine(screenPt0.x, screenPt0.y, screenPt1.x, screenPt1.y);
+			sdl_.RenderLine(screenPt1.x, screenPt1.y, screenPt2.x, screenPt2.y);
+			sdl_.RenderLine(screenPt2.x, screenPt2.y, screenPt0.x, screenPt0.y);
 		}
+
+		// Increment yaw rotation.
+		theta += 0.0001f;
 	});
 }
 

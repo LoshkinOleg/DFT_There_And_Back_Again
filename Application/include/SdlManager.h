@@ -33,8 +33,11 @@ namespace MyApp
 		bool Update();
 
 		void RenderRealSignal(const std::vector<float>& signal);
+		void RenderPointNormalized(const float x, const float y);
+		void RenderLineNormalized(const float x0, const float y0, const float x1, const float y1);
 		void RenderPoint(const float x, const float y);
 		void RenderLine(const float x0, const float y0, const float x1, const float y1);
+		void RenderFilledRect(const float xMin, const float xMax, const float yMin, const float yMax);
 
 		const unsigned int displaySize;
 

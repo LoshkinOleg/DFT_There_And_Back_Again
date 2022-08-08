@@ -112,14 +112,40 @@ void MyApp::SdlManager::RenderRealSignal(const std::vector<float>& signal)
 	}
 }
 
-void MyApp::SdlManager::RenderPoint(const float x, const float y)
+void MyApp::SdlManager::RenderPointNormalized(const float x, const float y)
 {
 	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
 	SDL_RenderDrawPointF(pRenderer_, x * displaySize, y * displaySize);
 }
 
-void MyApp::SdlManager::RenderLine(const float x0, const float y0, const float x1, const float y1)
+void MyApp::SdlManager::RenderLineNormalized(const float x0, const float y0, const float x1, const float y1)
 {
 	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
 	SDL_RenderDrawLineF(pRenderer_, x0 * displaySize, y0 * displaySize, x1 * displaySize, y1 * displaySize);
+}
+
+void MyApp::SdlManager::RenderPoint(const float x, const float y)
+{
+	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
+	SDL_RenderDrawPointF(pRenderer_, x, y);
+}
+
+void MyApp::SdlManager::RenderLine(const float x0, const float y0, const float x1, const float y1)
+{
+	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
+	SDL_RenderDrawLineF(pRenderer_, x0, y0, x1, y1);
+}
+
+void MyApp::SdlManager::RenderFilledRect(const float xMin, const float xMax, const float yMin, const float yMax)
+{
+	assert(xMax >= xMin && yMax >= yMin && "Invalid rectangle dimensions.");
+	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
+	const SDL_Rect r =
+	{
+		(int)xMin,
+		(int)yMin,
+		(int)(xMax - xMin),
+		(int)(yMax - yMin)
+	};
+	SDL_RenderFillRect(pRenderer_, &r);
 }

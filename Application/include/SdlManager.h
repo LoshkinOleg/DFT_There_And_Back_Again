@@ -15,7 +15,11 @@ namespace MyApp
 	enum class Input: size_t
 	{
 		ESCAPE = SDL_SCANCODE_ESCAPE,
-		SPACE = SDL_SCANCODE_SPACE
+		SPACE = SDL_SCANCODE_SPACE,
+		LEFT_MOUSE_BUTTON,
+		RIGHT_MOUSE_BUTTON,
+		SCROLL_WHEEL,
+		R = SDL_SCANCODE_R
 	};
 
 	class SdlManager
@@ -27,6 +31,7 @@ namespace MyApp
 		~SdlManager();
 
 		void RegisterInputCallback(const Input input, std::function<void(void)> callback);
+		void RegisterMouseInputCallback(const Input input, std::function<void(const float, const float)> callback);
 		void RegisterImguiCallback(std::function<void(void)> callback);
 		void RegisterRenderCallback(std::function<void(void)> callback);
 
@@ -46,6 +51,7 @@ namespace MyApp
 		SDL_Window* pWindow_ = nullptr;
 		SDL_Renderer* pRenderer_ = nullptr;
 		std::map<Input, std::vector<std::function<void(void)>>> inputCallbacks_;
+		std::map<Input, std::vector<std::function<void(const float, const float)>>> mouseInputCallbacks_;
 		std::vector<std::function<void(void)>> imguiCallbacks_;
 		std::vector<std::function<void(void)>> renderCallbacks_;
 

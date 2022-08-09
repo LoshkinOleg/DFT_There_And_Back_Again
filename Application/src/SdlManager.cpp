@@ -35,6 +35,11 @@ void MyApp::SdlManager::RegisterInputCallback(const Input input, std::function<v
 	inputCallbacks_[input].push_back(callback);
 }
 
+void MyApp::SdlManager::RegisterMouseInputCallback(const Input input, std::function<void(const float, const float)> callback)
+{
+	mouseInputCallbacks_[input].push_back(callback);
+}
+
 void MyApp::SdlManager::RegisterImguiCallback(std::function<void(void)> callback)
 {
 	imguiCallbacks_.push_back(callback);
@@ -63,6 +68,32 @@ bool MyApp::SdlManager::Update()
 				}
 			}
 			break;
+
+			case SDL_MOUSEMOTION:
+			{
+				if (event_.motion.state & SDL_BUTTON_LMASK)
+				{
+					for (auto& callback : mouseInputCallbacks_[Input::LEFT_MOUSE_BUTTON])
+					{
+						callback(event_.motion.xrel, event_.motion.yrel);
+					}
+				}
+				else if (event_.motion.state & SDL_BUTTON_RMASK)
+				{
+					for (auto& callback : mouseInputCallbacks_[Input::RIGHT_MOUSE_BUTTON])
+					{
+						callback(event_.motion.xrel, event_.motion.yrel);
+					}
+				}
+			}break;
+
+			case SDL_MOUSEWHEEL:
+			{
+				for (auto& callback : mouseInputCallbacks_[Input::SCROLL_WHEEL])
+				{
+					callback(event_.wheel.x, event_.wheel.y);
+				}
+			}break;
 
 			case SDL_QUIT:
 			{

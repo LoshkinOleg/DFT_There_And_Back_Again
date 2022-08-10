@@ -22,6 +22,21 @@ namespace MyApp
 		R = SDL_SCANCODE_R
 	};
 
+	struct ColorBytes
+	{
+		unsigned char r = 0;
+		unsigned char g = 0;
+		unsigned char b = 0;
+		unsigned char a = 255;
+	};
+
+	constexpr const ColorBytes COLOR_WHITE = {255, 255, 255, 255};
+	constexpr const ColorBytes COLOR_BLACK = {0, 0, 0, 255};
+	constexpr const ColorBytes COLOR_RED = {255, 0, 0, 255};
+	constexpr const ColorBytes COLOR_GREEN = {0, 255, 0, 255};
+	constexpr const ColorBytes COLOR_BLUE = {0, 0, 255, 255};
+	constexpr const ColorBytes COLOR_TRANSPARENT = {0, 0, 0, 0};
+
 	class SdlManager
 	{
 	public:
@@ -37,12 +52,9 @@ namespace MyApp
 
 		bool Update();
 
-		void RenderRealSignal(const std::vector<float>& signal);
-		void RenderPointNormalized(const float x, const float y);
-		void RenderLineNormalized(const float x0, const float y0, const float x1, const float y1);
-		void RenderPoint(const float x, const float y);
-		void RenderLine(const float x0, const float y0, const float x1, const float y1);
-		void RenderFilledRect(const float xMin, const float xMax, const float yMin, const float yMax);
+		void RenderPoint(const float x, const float y, ColorBytes color);
+		void RenderLine(const float x0, const float y0, const float x1, const float y1, ColorBytes color);
+		void RenderFilledRect(const float xMin, const float xMax, const float yMin, const float yMax, ColorBytes color);
 
 		const unsigned int displaySize;
 

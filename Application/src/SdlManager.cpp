@@ -128,49 +128,22 @@ bool MyApp::SdlManager::Update()
 	return false;
 }
 
-void MyApp::SdlManager::RenderRealSignal(const std::vector<float>& signal)
+void MyApp::SdlManager::RenderPoint(const float x, const float y, ColorBytes color)
 {
-	constexpr const float SCALING_FACTOR = 100.0f;
-
-	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
-
-	const unsigned int len = (unsigned int)signal.size();
-	const float step = (float)displaySize / (float)len;
-	const float centerY = (float)displaySize / 2.0f;
-	for (unsigned int i = 0; i < len; i++)
-	{
-		SDL_RenderDrawLineF(pRenderer_, step * i, centerY, step * i, centerY - signal[i] * SCALING_FACTOR);
-	}
-}
-
-void MyApp::SdlManager::RenderPointNormalized(const float x, const float y)
-{
-	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
-	SDL_RenderDrawPointF(pRenderer_, x * displaySize, y * displaySize);
-}
-
-void MyApp::SdlManager::RenderLineNormalized(const float x0, const float y0, const float x1, const float y1)
-{
-	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
-	SDL_RenderDrawLineF(pRenderer_, x0 * displaySize, y0 * displaySize, x1 * displaySize, y1 * displaySize);
-}
-
-void MyApp::SdlManager::RenderPoint(const float x, const float y)
-{
-	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
+	SDL_SetRenderDrawColor(pRenderer_, color.r, color.g, color.b, color.a);
 	SDL_RenderDrawPointF(pRenderer_, x, y);
 }
 
-void MyApp::SdlManager::RenderLine(const float x0, const float y0, const float x1, const float y1)
+void MyApp::SdlManager::RenderLine(const float x0, const float y0, const float x1, const float y1, ColorBytes color)
 {
-	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
+	SDL_SetRenderDrawColor(pRenderer_, color.r, color.g, color.b, color.a);
 	SDL_RenderDrawLineF(pRenderer_, x0, y0, x1, y1);
 }
 
-void MyApp::SdlManager::RenderFilledRect(const float xMin, const float xMax, const float yMin, const float yMax)
+void MyApp::SdlManager::RenderFilledRect(const float xMin, const float xMax, const float yMin, const float yMax, ColorBytes color)
 {
 	assert(xMax >= xMin && yMax >= yMin && "Invalid rectangle dimensions.");
-	SDL_SetRenderDrawColor(pRenderer_, 255, 0, 0, 255);
+	SDL_SetRenderDrawColor(pRenderer_, color.r, color.g, color.b, color.a);
 	const SDL_Rect r =
 	{
 		(int)xMin,

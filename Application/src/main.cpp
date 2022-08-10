@@ -44,26 +44,37 @@ inline void ResetTransformations(float& accumulatedYaw, float& accumulatedPitch,
 	viewMatrix = {};
 }
 
-inline void RenderFrequencyDomainSignal(const std::vector<std::complex<float>>& freqDomSignal, const float samplesSpacing,
+inline void RenderFrequencyDomainSignal(const std::vector<std::complex<float>>& signal, const float samplesSpacing,
 										const MyMath::Mat4x4& rotation, const MyMath::Mat4x4& translation,
 										const MyMath::Mat4x4& view, const MyMath::Box& bounds, const MyMath::Mat4x4& proj,
-										MyApp::SdlManager& sdl)
+										MyApp::SdlManager& sdl, const MyApp::ColorBytes color, const float& zOffset)
 {
+	float biggestComponent = -1.0f;
+	for (const auto& complex : signal)
+	{
+		if (std::fabs(complex.real()) > biggestComponent) biggestComponent = std::fabs(complex.real());
+		if (std::fabs(complex.imag()) > biggestComponent) biggestComponent = std::fabs(complex.imag());
+	}
+	const float amplitudeScale = 1.0f / biggestComponent;
+	
+	MyMath::Mat4x4 translationWithOffset = translation;
+	translationWithOffset.m23 += zOffset;
+
 	// Draw each frequency bin as a line.
-	for (size_t n = 0; n < freqDomSignal.size(); n++)
+	for (size_t n = 0; n < signal.size(); n++)
 	{
 		MyMath::Vec4 pt0, pt1; // World position.
 		// Single vertices. No model transformation since it's assumed to be an identity matrix.
-		const float zPos = float(n) / float(freqDomSignal.size());
+		const float zPos = float(n) / float(signal.size());
 		pt0 = { 0.0f,							0.0f,							samplesSpacing * zPos, 1.0f };
-		pt1 = { freqDomSignal[n].real(), freqDomSignal[n].imag(), samplesSpacing * zPos, 1.0f };
+		pt1 = { signal[n].real() * amplitudeScale, signal[n].imag() * amplitudeScale, samplesSpacing * zPos, 1.0f };
 
 		// Rotate rotate around Z.
 		pt0 = MatrixVectorMultiplication(rotation, pt0);
 		pt1 = MatrixVectorMultiplication(rotation, pt1);
 		// Offset on Z.
-		pt0 = MatrixVectorMultiplication(translation, pt0);
-		pt1 = MatrixVectorMultiplication(translation, pt1);
+		pt0 = MatrixVectorMultiplication(translationWithOffset, pt0);
+		pt1 = MatrixVectorMultiplication(translationWithOffset, pt1);
 
 		// To view space.
 		pt0 = MatrixVectorMultiplication(view, pt0);
@@ -106,32 +117,40 @@ inline void RenderFrequencyDomainSignal(const std::vector<std::complex<float>>& 
 			   windowPt1.y >= 0.0f && windowPt1.y <= sdl.displaySize && "Window point lies outside the screen's bounds.");
 
 		// Draw vertices.
-		sdl.RenderLine(windowPt0.x, windowPt0.y, windowPt1.x, windowPt1.y);
+		sdl.RenderLine(windowPt0.x, windowPt0.y, windowPt1.x, windowPt1.y, color);
 	}
 }
 
-inline void RenderTimeDomainSignal(const std::vector<float>& timeDomSignal, const float samplesSpacing,
+inline void RenderTimeDomainSignal(const std::vector<float>& signal, const float samplesSpacing,
 										const MyMath::Mat4x4& rotation, const MyMath::Mat4x4& translation,
 										const MyMath::Mat4x4& view, const MyMath::Box& bounds, const MyMath::Mat4x4& proj,
-										MyApp::SdlManager& sdl)
+										MyApp::SdlManager& sdl, const MyApp::ColorBytes color, const float zOffset)
 {
-	constexpr const float AMP_MULTIPLIER = 1.0f;
+	float biggestComponent = -1.0f;
+	for (const auto& amplitude : signal)
+	{
+		if (std::fabs(amplitude) > biggestComponent) biggestComponent = std::fabs(amplitude);
+	}
+	const float amplitudeScale = 1.0f / biggestComponent;
+
+	MyMath::Mat4x4 translationWithOffset = translation;
+	translationWithOffset.m23 += zOffset;
 
 	// Draw each frequency bin as a line.
-	for (size_t n = 0; n < timeDomSignal.size(); n++)
+	for (size_t n = 0; n < signal.size(); n++)
 	{
 		MyMath::Vec4 pt0, pt1; // World position.
 		// Single vertices. No model transformation since it's assumed to be an identity matrix.
-		const float zPos = float(n) / float(timeDomSignal.size());
+		const float zPos = float(n) / float(signal.size());
 		pt0 = { 0.0f, 0.0f, samplesSpacing * zPos, 1.0f };
-		pt1 = { AMP_MULTIPLIER * timeDomSignal[n], 0.0f, samplesSpacing * zPos, 1.0f };
+		pt1 = { amplitudeScale * signal[n], 0.0f, samplesSpacing * zPos, 1.0f };
 
 		// Rotate rotate around Z.
 		pt0 = MatrixVectorMultiplication(rotation, pt0);
 		pt1 = MatrixVectorMultiplication(rotation, pt1);
 		// Offset on Z.
-		pt0 = MatrixVectorMultiplication(translation, pt0);
-		pt1 = MatrixVectorMultiplication(translation, pt1);
+		pt0 = MatrixVectorMultiplication(translationWithOffset, pt0);
+		pt1 = MatrixVectorMultiplication(translationWithOffset, pt1);
 
 		// To view space.
 		pt0 = MatrixVectorMultiplication(view, pt0);
@@ -174,29 +193,12 @@ inline void RenderTimeDomainSignal(const std::vector<float>& timeDomSignal, cons
 			   windowPt1.y >= 0.0f && windowPt1.y <= sdl.displaySize && "Window point lies outside the screen's bounds.");
 
 		// Draw vertices.
-		sdl.RenderLine(windowPt0.x, windowPt0.y, windowPt1.x, windowPt1.y);
+		sdl.RenderLine(windowPt0.x, windowPt0.y, windowPt1.x, windowPt1.y, color);
 	}
 }
 
-void VisualizeSineInFreqencyDomain(MyApp::AudioEngine& audioEngine, MyApp::SdlManager& sdl)
+void VisualizeFreqencyDomainSignal(MyApp::AudioEngine& audioEngine, MyApp::SdlManager& sdl, const std::vector<std::complex<float>>& signal, const MyApp::ColorBytes& color, const float& zOffset)
 {
-	// Generate a sine to be visualized.
-	constexpr const size_t SINE_SAMPLE_RATE = 8000;
-	constexpr const size_t SINE_FREQ = 441;
-	std::vector<float> sine(SINE_SAMPLE_RATE, 0.0f);
-	for (size_t n = 0; n < sine.size(); n++)
-	{
-		sine[n] = GenerateSine(n, SINE_SAMPLE_RATE, SINE_FREQ);
-	}
-
-	// Create a sound to hear the sine signal.
-	auto& sound = audioEngine.CreateSound(sine);
-	sound.Play();
-
-	// Compute the full discrete fourier transform of the sine.
-	static std::vector<std::complex<float>> sineFourierTransform(SINE_SAMPLE_RATE, 0.0f);
-	MyDFT::DFT(sineFourierTransform, sine, SINE_SAMPLE_RATE);
-
 	// Static data for 3D rendering.
 	static MyMath::Mat4x4 objectRotation = MyMath::MAT4_IDENTITY;
 	static MyMath::Mat4x4 objectTranslation = MyMath::MAT4_IDENTITY;
@@ -232,13 +234,56 @@ void VisualizeSineInFreqencyDomain(MyApp::AudioEngine& audioEngine, MyApp::SdlMa
 	{
 		constexpr const MyMath::Box BOUNDS{ -2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f };
 		constexpr const MyMath::Mat4x4 ORTHO_PROJ_MAT = MyMath::OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top);
-		RenderFrequencyDomainSignal(sineFourierTransform, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl);
+		RenderFrequencyDomainSignal(signal, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl, color, zOffset);
 	});
 }
 
-void VisualizeSineInTimeDomain(MyApp::AudioEngine& audioEngine, MyApp::SdlManager& sdl)
+// TODO: fix the need to pass static variables by reference.
+void VisualizeTimeDomainSignal(MyApp::AudioEngine& audioEngine, MyApp::SdlManager& sdl, const std::vector<float>& signal, const MyApp::ColorBytes& color, const float& zOffset)
 {
-	// Generate a sine to be visualized.
+	// Static data for 3D rendering.
+	static MyMath::Mat4x4 objectRotation = MyMath::MAT4_IDENTITY;
+	static MyMath::Mat4x4 objectTranslation = MyMath::MAT4_IDENTITY;
+	static MyMath::Mat4x4 viewMatrix = MyMath::MAT4_IDENTITY;
+	static float accumulatedYaw = 0.0f; // Controlled with left mouse button. Allows you to rotate the signal around.
+	static float accumulatedPitch = 0.0f; // Controlled with left mouse button. Allows you to pitch the signal towards and away from camera.
+	static float samplesSpacing = 1.0f; // Controlled with right mouse button. Allows you to zoom into the signal.
+	static float accumulatedZoffset = 0.0f; // Controlled with scroll wheel. Allows you to scroll through the signal.
+
+	// Register user input callbacks.
+	sdl.RegisterMouseInputCallback(MyApp::Input::LEFT_MOUSE_BUTTON, [&](const float x, const float y)
+	{
+		constexpr const float MOUSE_SENSITIVITY = 0.001f;
+		ProcessLMB(x * MOUSE_SENSITIVITY, y * MOUSE_SENSITIVITY, accumulatedYaw, accumulatedPitch, objectRotation, viewMatrix);
+	});
+	sdl.RegisterMouseInputCallback(MyApp::Input::RIGHT_MOUSE_BUTTON, [&](const float x, const float y)
+	{
+		constexpr const float WHEEL_SENSITIVITY = 1.0f;
+		ProcessRMB(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, samplesSpacing);
+	});
+	sdl.RegisterMouseInputCallback(MyApp::Input::SCROLL_WHEEL, [&](const float x, const float y)
+	{
+		constexpr const float WHEEL_SENSITIVITY = 0.1f;
+		ProcessScrollWheel(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, objectTranslation);
+	});
+	sdl.RegisterInputCallback(MyApp::Input::R, [&]()
+	{
+		ResetTransformations(accumulatedYaw, accumulatedPitch, samplesSpacing, objectRotation, objectTranslation, viewMatrix);
+	});
+
+	// Register rending callback.
+	sdl.RegisterRenderCallback([&]()
+	{
+		constexpr const MyMath::Box BOUNDS{ -2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f };
+		constexpr const MyMath::Mat4x4 ORTHO_PROJ_MAT = MyMath::OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top);
+		RenderTimeDomainSignal(signal, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl, color, zOffset);
+	});
+}
+
+void MyApp::Application::OnStart()
+{
+
+	// Generate a 441 Hz sine to be visualized in time and frequency domains.
 	constexpr const size_t SINE_SAMPLE_RATE = 8000;
 	constexpr const size_t SINE_FREQ = 441;
 	static std::vector<float> sine(SINE_SAMPLE_RATE, 0.0f);
@@ -246,54 +291,64 @@ void VisualizeSineInTimeDomain(MyApp::AudioEngine& audioEngine, MyApp::SdlManage
 	{
 		sine[n] = GenerateSine(n, SINE_SAMPLE_RATE, SINE_FREQ);
 	}
-
+	
 	// Create a sound to hear the sine signal.
-	auto& sound = audioEngine.CreateSound(sine);
+	auto& sound = audioEngine_.CreateSound(sine);
 	sound.Play();
+	
+	// Compute the full discrete fourier transform of the sine.
+	static std::vector<std::complex<float>> sineFourierTransform(SINE_SAMPLE_RATE, 0.0f);
+	MyDFT::DFT(sineFourierTransform, sine, SINE_SAMPLE_RATE);
+	
+	static const float offset0 = 0.0f;
+	static const float offset1 = 0.01f;
+	VisualizeFreqencyDomainSignal(audioEngine_, sdl_, sineFourierTransform, MyApp::COLOR_RED, offset0);
+	VisualizeTimeDomainSignal(audioEngine_, sdl_, sine, MyApp::COLOR_GREEN, offset1);
 
-	// Static data for 3D rendering.
-	static MyMath::Mat4x4 objectRotation = MyMath::MAT4_IDENTITY;
-	static MyMath::Mat4x4 objectTranslation = MyMath::MAT4_IDENTITY;
-	static MyMath::Mat4x4 viewMatrix = MyMath::MAT4_IDENTITY;
-	static float accumulatedYaw = 0.0f; // Controlled with left mouse button. Allows you to rotate the signal around.
-	static float accumulatedPitch = 0.0f; // Controlled with left mouse button. Allows you to pitch the signal towards and away from camera.
-	static float samplesSpacing = 1.0f; // Controlled with right mouse button. Allows you to zoom into the signal.
-	static float accumulatedZoffset = 0.0f; // Controlled with scroll wheel. Allows you to scroll through the signal.
 
-	// Register user input callbacks.
-	sdl.RegisterMouseInputCallback(MyApp::Input::LEFT_MOUSE_BUTTON, [&](const float x, const float y)
-	{
-		constexpr const float MOUSE_SENSITIVITY = 0.001f;
-		ProcessLMB(x * MOUSE_SENSITIVITY, y * MOUSE_SENSITIVITY, accumulatedYaw, accumulatedPitch, objectRotation, viewMatrix);
-	});
-	sdl.RegisterMouseInputCallback(MyApp::Input::RIGHT_MOUSE_BUTTON, [&](const float x, const float y)
-	{
-		constexpr const float WHEEL_SENSITIVITY = 1.0f;
-		ProcessRMB(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, samplesSpacing);
-	});
-	sdl.RegisterMouseInputCallback(MyApp::Input::SCROLL_WHEEL, [&](const float x, const float y)
-	{
-		constexpr const float WHEEL_SENSITIVITY = 0.1f;
-		ProcessScrollWheel(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, objectTranslation);
-	});
-	sdl.RegisterInputCallback(MyApp::Input::R, [&]()
-	{
-		ResetTransformations(accumulatedYaw, accumulatedPitch, samplesSpacing, objectRotation, objectTranslation, viewMatrix);
-	});
+	// Synthesize a frequency domain signal whose time domain representation is a 441 Hz sine.
+	// constexpr const size_t SIGNAL_SAMPLE_RATE = 8000;
+	// constexpr const size_t SIGNAL_FREQ = 441;
+	// constexpr const float angleInRad = -0.5f * MyMath::PI;
+	// constexpr const float complexMagnitude = 1.0f * SIGNAL_SAMPLE_RATE;
+	// static std::vector<std::complex<float>> synthesizedFreqDom(SIGNAL_SAMPLE_RATE, 0.0f);
+	// synthesizedFreqDom[SIGNAL_FREQ] = std::complex<float>(std::cosf(angleInRad) * complexMagnitude, std::sinf(angleInRad) * complexMagnitude);
+	// 
+	// static std::vector<float> timeDom(SIGNAL_SAMPLE_RATE, 0.0f);
+	// MyDFT::IDFT(timeDom, synthesizedFreqDom, SIGNAL_SAMPLE_RATE);
+	// 
+	// static std::vector<float> sine(SIGNAL_SAMPLE_RATE, 0.0f);
+	// for (size_t n = 0; n < sine.size(); n++)
+	// {
+	// 	sine[n] = GenerateSine(n, SIGNAL_SAMPLE_RATE, SIGNAL_FREQ);
+	// }
+	// 
+	// static const float offset0 = 0.0f;
+	// static const float offset1 = 0.01f;
+	// VisualizeTimeDomainSignal(audioEngine_, sdl_, timeDom, MyApp::COLOR_RED, offset0);
+	// VisualizeTimeDomainSignal(audioEngine_, sdl_, sine, MyApp::COLOR_GREEN, offset1);
 
-	// Register rending callback.
-	sdl.RegisterRenderCallback([&]()
-	{
-		constexpr const MyMath::Box BOUNDS{ -2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f };
-		constexpr const MyMath::Mat4x4 ORTHO_PROJ_MAT = MyMath::OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top);
-		RenderTimeDomainSignal(sine, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl);
-	});
-}
 
-void MyApp::Application::OnStart()
-{
-	// VisualizeSineInFreqencyDomain(audioEngine_, sdl_);
-	VisualizeSineInTimeDomain(audioEngine_, sdl_);
+	// Draw our synthesized frequency domain and the one given by DFT. We can see that the two signals are reversed.
+	// constexpr const size_t SIGNAL_SAMPLE_RATE = 8000;
+	// constexpr const size_t SIGNAL_FREQ = 441;
+	// constexpr const float angleInRad = -0.5f * MyMath::PI;
+	// constexpr const float complexMagnitude = 1.0f * SIGNAL_SAMPLE_RATE;
+	// static std::vector<std::complex<float>> synthesizedFreqDom(SIGNAL_SAMPLE_RATE, 0.0f);
+	// synthesizedFreqDom[SIGNAL_FREQ] = std::complex<float>(std::cosf(angleInRad) * complexMagnitude, std::sinf(angleInRad) * complexMagnitude);
+	// 
+	// std::vector<float> sine(SIGNAL_SAMPLE_RATE, 0.0f);
+	// for (size_t n = 0; n < sine.size(); n++)
+	// {
+	// 	sine[n] = GenerateSine(n, SIGNAL_SAMPLE_RATE, SIGNAL_FREQ);
+	// }
+	// static std::vector<std::complex<float>> generatedFreqDom(SIGNAL_SAMPLE_RATE, 0.0f);
+	// MyDFT::DFT(generatedFreqDom, sine, SIGNAL_SAMPLE_RATE);
+	// 
+	// static const float offset0 = 0.0f;
+	// static const float offset1 = 0.01f;
+	// VisualizeFreqencyDomainSignal(audioEngine_, sdl_, generatedFreqDom, MyApp::COLOR_RED, offset0);
+	// VisualizeFreqencyDomainSignal(audioEngine_, sdl_, synthesizedFreqDom, MyApp::COLOR_GREEN, offset1);
 }
 
 void MyApp::Application::OnUpdate()

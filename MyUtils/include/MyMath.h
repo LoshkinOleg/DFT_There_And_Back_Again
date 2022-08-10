@@ -3,6 +3,7 @@
 namespace MyMath
 {
 	constexpr const float PI = 3.14159265359f;
+	constexpr const float E =  2.71828182845f;
 
 	struct Vec2
 	{

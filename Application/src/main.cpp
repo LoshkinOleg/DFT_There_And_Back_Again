@@ -6,300 +6,171 @@
 #include <array>
 
 #include "MyDFT.h"
-
-struct Vec2
-{
-	float x = 0;
-	float y = 0;
-};
-
-struct Vec3
-{
-	float x = 0;
-	float y = 0;
-	float z = 0;
-};
-
-struct Vec4
-{
-	float x = 0;
-	float y = 0;
-	float z = 0;
-	float w = 1; // 1 by default since that's what we usually need when dealing with 4x4 transform matrices.
-
-	inline bool operator==(const Vec4& other) const
-	{
-		return	x == other.x &&
-			y == other.y &&
-			z == other.z &&
-			w == other.w;
-	}
-};
-
-struct Mat4x4
-{
-	float m00 = 1.0f; float m01 = 0.0f; float m02 = 0.0f; float m03 = 0.0f;
-	float m10 = 0.0f; float m11 = 1.0f; float m12 = 0.0f; float m13 = 0.0f;
-	float m20 = 0.0f; float m21 = 0.0f; float m22 = 1.0f; float m23 = 0.0f;
-	float m30 = 0.0f; float m31 = 0.0f; float m32 = 0.0f; float m33 = 1.0f;
-
-	inline bool operator==(const Mat4x4& other) const
-	{
-		return	m00 == other.m00 && m01 == other.m01 && m02 == other.m02 && m03 == other.m03 &&
-			m10 == other.m10 && m11 == other.m11 && m12 == other.m12 && m13 == other.m13 &&
-			m20 == other.m20 && m21 == other.m21 && m22 == other.m22 && m23 == other.m23 &&
-			m30 == other.m30 && m31 == other.m31 && m32 == other.m32 && m33 == other.m33;
-	}
-};
-
-inline Vec4 MatrixVectorMultiplication(const Mat4x4 a, const Vec4 b)
-{
-	return
-	{
-		a.m00 * b.x + a.m01 * b.y + a.m02 * b.z + a.m03 * b.w,
-		a.m10 * b.x + a.m11 * b.y + a.m12 * b.z + a.m13 * b.w,
-		a.m20 * b.x + a.m21 * b.y + a.m22 * b.z + a.m23 * b.w,
-		a.m30 * b.x + a.m31 * b.y + a.m32 * b.z + a.m33 * b.w
-	};
-}
-
-constexpr inline Mat4x4 OrthogonalProjectionMatrix(const float near, const float far, const float right, const float left, const float bottom, const float top)
-{
-	// Rearranged version of: https://www.scratchapixel.com/lessons/3d-basic-rendering/perspective-and-orthographic-projection-matrix/orthographic-projection-matrix
-
-	assert(far > near && left > right && top > bottom && "Invalid bounds for an orthogonal projection matrix.");
-
-	return
-	{
-		2.0f / (far - near),	0.0f,					0.0f,					-(far + near) / (far - near),
-		0.0f,					2.0f / (left - right),	0.0f,					-(left + right) / (left - right),
-		0.0f,					0.0f,					2.0f / (top - bottom),	-(top + bottom) / (top - bottom),
-		0.0f,					0.0f,					0.0f,					1.0f
-	};
-}
-
-void PrintVec(const Vec4& v)
-{
-	std::cout << "(" << std::to_string(v.x) << " ; " << std::to_string(v.y) << " ; " << std::to_string(v.z) << " ; " << std::to_string(v.w) << ")" << std::endl;
-}
-
-void PrintMat(const Mat4x4& m)
-{
-	std::cout << "(\n" << std::to_string(m.m00) << " ; " << std::to_string(m.m01) << " ; " << std::to_string(m.m02) << " ; " << std::to_string(m.m03) << ";\n";
-	std::cout << std::to_string(m.m10) << " ; " << std::to_string(m.m11) << " ; " << std::to_string(m.m12) << " ; " << std::to_string(m.m13) << ";\n";
-	std::cout << std::to_string(m.m20) << " ; " << std::to_string(m.m21) << " ; " << std::to_string(m.m22) << " ; " << std::to_string(m.m23) << ";\n";
-	std::cout << std::to_string(m.m30) << " ; " << std::to_string(m.m31) << " ; " << std::to_string(m.m32) << " ; " << std::to_string(m.m33) << ";\n)" << std::endl;
-}
-
-// Following 3DTI's coordinate convention... really should have followed the mathematical right-hand convention instead... oh well.
-constexpr const Vec3 FRONT = { 1.0f, 0.0f, 0.0f };
-constexpr const Vec3 LEFT = { 0.0f, 1.0f, 0.0f };
-constexpr const Vec3 UP = { 0.0f, 0.0f, 1.0f };
-
-// Box volume used for orthogonal projection.
-struct Box
-{
-	float back = -1.0f; // -X
-	float front = 1.0f; // +X
-	float right = -1.0f; // -Y
-	float left = 1.0f; // +Y
-	float bottom = -1.0f; // -Z
-	float top = 1.0f; // +Z
-};
-
-inline Mat4x4 MatrixMultiplication(const Mat4x4 a, const Mat4x4 b)
-{
-	return
-	{
-		a.m00 * b.m00 + a.m01 * b.m10 + a.m02 * b.m20 + a.m03 * b.m30,	a.m00 * b.m01 + a.m01 * b.m11 + a.m02 * b.m21 + a.m03 * b.m31,	a.m00 * b.m02 + a.m01 * b.m12 + a.m02 * b.m22 + a.m03 * b.m32,	a.m00 * b.m03 + a.m01 * b.m13 + a.m02 * b.m23 + a.m03 * b.m33,
-		a.m10 * b.m00 + a.m11 * b.m10 + a.m12 * b.m20 + a.m13 * b.m30,	a.m10 * b.m01 + a.m11 * b.m11 + a.m12 * b.m21 + a.m13 * b.m31,	a.m10 * b.m02 + a.m11 * b.m12 + a.m12 * b.m22 + a.m13 * b.m32,	a.m10 * b.m03 + a.m11 * b.m13 + a.m12 * b.m23 + a.m13 * b.m33,
-		a.m20 * b.m00 + a.m21 * b.m10 + a.m22 * b.m20 + a.m23 * b.m30,	a.m20 * b.m01 + a.m21 * b.m11 + a.m22 * b.m21 + a.m23 * b.m31,	a.m20 * b.m02 + a.m21 * b.m12 + a.m22 * b.m22 + a.m23 * b.m32,	a.m20 * b.m03 + a.m21 * b.m13 + a.m22 * b.m23 + a.m23 * b.m33,
-		a.m30 * b.m00 + a.m31 * b.m10 + a.m32 * b.m20 + a.m33 * b.m30,	a.m30 * b.m01 + a.m31 * b.m11 + a.m32 * b.m21 + a.m33 * b.m31,	a.m30 * b.m02 + a.m31 * b.m12 + a.m32 * b.m22 + a.m33 * b.m32,	a.m30 * b.m03 + a.m31 * b.m13 + a.m32 * b.m23 + a.m33 * b.m33
-	};
-}
-
-inline Mat4x4 RotationMatrix(const float yaw, const float pitch, const float roll)
-{
-	// Taken from: https://en.wikipedia.org/wiki/Rotation_matrix
-
-	const float cosa = std::cosf(yaw);
-	const float sina = std::sinf(yaw);
-	const float cosb = std::cosf(pitch);
-	const float sinb = std::sinf(pitch);
-	const float cosy = std::cosf(roll);
-	const float siny = std::sinf(roll);
-
-	return
-	{
-		cosb * cosy,		sina * sinb * cosy - cosa * siny,		cosa * sinb * cosy + sina * siny,		0.0f,
-		cosb * siny,		sina * sinb * siny + cosa * cosy,		cosa * sinb * siny - sina * cosy,		0.0f,
-		-sinb,			sina * cosb,						cosa * cosb,						0.0f,
-		0.0f,			0.0f,							0.0f,							1.0f
-	};
-}
-
-inline Mat4x4 RotationMatrix(const Vec3 axis, const float rad)
-{
-	// Taken from: https://en.wikipedia.org/wiki/Rotation_matrix
-
-	const float cos = std::cosf(rad);
-	const float sin = std::sinf(rad);
-	const float mcos = 1.0f - cos;
-	const float x = axis.x;
-	const float y = axis.y;
-	const float z = axis.z;
-
-	return
-	{
-		cos+x*x*mcos,	x*y*mcos-z*sin,	x*z*mcos+y*sin,	0.0f,
-		y*x*mcos+z*sin,	cos+y*y*mcos,	y*z*mcos-x*sin,	0.0f,
-		z*x*mcos-y*sin,	z*y*mcos+x*sin,	cos+z*z*mcos,	0.0f,
-		0.0f,			0.0f,			0.0f,			1.0f
-	};
-}
+#include "MyMath.h"
 
 inline float GenerateSine(const float n, const float sampleRate, const float frequency)
 {
-	constexpr const float PI = 3.14159265359f;
+	return std::sinf((2.0f * MyMath::PI * n / sampleRate) * frequency);
+}
 
-	return std::sinf((2.0f * PI * n / sampleRate) * frequency);
+inline void ProcessLMB(const float relx, const float rely, float& accumulatedYaw, float& accumulatedPitch, MyMath::Mat4x4& rotation, MyMath::Mat4x4& viewMatrix)
+{
+	constexpr const float RIGHT_ANGLE = MyMath::PI * 0.5f;
+
+	accumulatedYaw += relx;
+	accumulatedPitch -= rely;
+	rotation = MatrixMultiplication(MyMath::MAT4_IDENTITY, MyMath::RotationMatrix(MyMath::VEC3_UP, RIGHT_ANGLE * accumulatedYaw));
+	viewMatrix = MatrixMultiplication(MyMath::MAT4_IDENTITY, MyMath::RotationMatrix(MyMath::VEC3_LEFT, RIGHT_ANGLE * accumulatedPitch));
+}
+
+inline void ProcessRMB(const float relx, const float rely, float& samplesSpacing)
+{
+	samplesSpacing += rely;
+	if (samplesSpacing <= 0.0f) samplesSpacing = 0.01f;
+}
+
+inline void ProcessScrollWheel(const float relx, const float rely, MyMath::Mat4x4& translation)
+{
+	translation.m23 -= rely;
+}
+
+inline void ResetTransformations(float& accumulatedYaw, float& accumulatedPitch, float& samplesSpacing, MyMath::Mat4x4& rotation, MyMath::Mat4x4& translation, MyMath::Mat4x4& viewMatrix)
+{
+	accumulatedYaw = 0.0f;
+	accumulatedPitch = 0.0f;
+	samplesSpacing = 1.0f;
+	rotation = {};
+	translation = {};
+	viewMatrix = {};
+}
+
+inline void RenderFrequencyDomainSignal(const std::vector<std::complex<float>>& freqDomSignal, const float samplesSpacing,
+										const MyMath::Mat4x4& rotation, const MyMath::Mat4x4& translation,
+										const MyMath::Mat4x4& view, const MyMath::Box& bounds, const MyMath::Mat4x4& proj,
+										MyApp::SdlManager& sdl)
+{
+	// Draw each frequency bin as a line.
+	for (size_t n = 0; n < freqDomSignal.size(); n++)
+	{
+		MyMath::Vec4 pt0, pt1; // World position.
+		// Single vertices. No model transformation since it's assumed to be an identity matrix.
+		const float zPos = float(n) / float(freqDomSignal.size());
+		pt0 = { 0.0f,							0.0f,							samplesSpacing * zPos, 1.0f };
+		pt1 = { freqDomSignal[n].real(), freqDomSignal[n].imag(), samplesSpacing * zPos, 1.0f };
+
+		// Rotate rotate around Z.
+		pt0 = MatrixVectorMultiplication(rotation, pt0);
+		pt1 = MatrixVectorMultiplication(rotation, pt1);
+		// Offset on Z.
+		pt0 = MatrixVectorMultiplication(translation, pt0);
+		pt1 = MatrixVectorMultiplication(translation, pt1);
+
+		// To view space.
+		pt0 = MatrixVectorMultiplication(view, pt0);
+		pt1 = MatrixVectorMultiplication(view, pt1);
+
+		// Cull points outside the viewing volume.
+		if (pt0.x < bounds.back || pt0.x > bounds.front ||
+			pt0.y < bounds.right || pt0.y > bounds.left ||
+			pt0.z < bounds.bottom || pt0.z > bounds.top) continue;
+		if (pt1.x < bounds.back || pt1.x > bounds.front ||
+			pt1.y < bounds.right || pt1.y > bounds.left ||
+			pt1.z < bounds.bottom || pt1.z > bounds.top) continue;
+
+		// To clip space.
+		pt0 = MatrixVectorMultiplication(proj, pt0);
+		pt1 = MatrixVectorMultiplication(proj, pt1);
+
+		assert(pt0.x >= -1.0f && pt0.x <= 1.0f &&
+			   pt0.y >= -1.0f && pt0.y <= 1.0f &&
+			   pt0.z >= -1.0f && pt0.z <= 1.0f && "Normalized device coordinate lies outside the normal range.");
+		assert(pt1.x >= -1.0f && pt1.x <= 1.0f &&
+			   pt1.y >= -1.0f && pt1.y <= 1.0f &&
+			   pt1.z >= -1.0f && pt1.z <= 1.0f && "Normalized device coordinate lies outside the normal range.");
+
+		// Clip viewport space following "Viewport transform" section of: https://www.khronos.org/opengl/wiki/Viewport_Transform note: adjusted to fit SDL's coordinate convention.
+		// Depth (x component) is discarded, we don't need it. No perspective divide since we're using orthogonal projection.
+		const MyMath::Vec2 windowPt0 =
+		{
+			sdl.displaySize * 0.5f * -pt0.y + 0 + sdl.displaySize * 0.5f,
+			sdl.displaySize - (sdl.displaySize * 0.5f * pt0.z + 0 + sdl.displaySize * 0.5f)
+		};
+		const MyMath::Vec2 windowPt1 =
+		{
+			sdl.displaySize * 0.5f * -pt1.y + 0 + sdl.displaySize * 0.5f,
+			sdl.displaySize - (sdl.displaySize * 0.5f * pt1.z + 0 + sdl.displaySize * 0.5f)
+		};
+		assert(windowPt0.x >= 0.0f && windowPt0.x <= sdl.displaySize &&
+			   windowPt0.y >= 0.0f && windowPt0.y <= sdl.displaySize && "Window point lies outside the screen's bounds.");
+		assert(windowPt1.x >= 0.0f && windowPt1.x <= sdl.displaySize &&
+			   windowPt1.y >= 0.0f && windowPt1.y <= sdl.displaySize && "Window point lies outside the screen's bounds.");
+
+		// Draw vertices.
+		sdl.RenderLine(windowPt0.x, windowPt0.y, windowPt1.x, windowPt1.y);
+	}
+}
+
+void VisualizeSineInFreqencyDomain(MyApp::AudioEngine& audioEngine, MyApp::SdlManager& sdl)
+{
+	// Generate a sine to be visualized.
+	constexpr const size_t SINE_SAMPLE_RATE = 8000;
+	constexpr const size_t SINE_FREQ = 441;
+	std::vector<float> sine(SINE_SAMPLE_RATE, 0.0f);
+	for (size_t n = 0; n < sine.size(); n++)
+	{
+		sine[n] = GenerateSine(n, SINE_SAMPLE_RATE, SINE_FREQ);
+	}
+
+	// Create a sound to hear the sine signal.
+	auto& sound = audioEngine.CreateSound(sine);
+	sound.Play();
+
+	// Compute the full discrete fourier transform of the sine.
+	static std::vector<std::complex<float>> sineFourierTransform(SINE_SAMPLE_RATE, 0.0f);
+	MyDFT::DFT(sineFourierTransform, sine, SINE_SAMPLE_RATE);
+
+	// Static data for 3D rendering.
+	static MyMath::Mat4x4 objectRotation = MyMath::MAT4_IDENTITY;
+	static MyMath::Mat4x4 objectTranslation = MyMath::MAT4_IDENTITY;
+	static MyMath::Mat4x4 viewMatrix = MyMath::MAT4_IDENTITY;
+	static float accumulatedYaw = 0.0f; // Controlled with left mouse button. Allows you to rotate the signal around.
+	static float accumulatedPitch = 0.0f; // Controlled with left mouse button. Allows you to pitch the signal towards and away from camera.
+	static float samplesSpacing = 1.0f; // Controlled with right mouse button. Allows you to zoom into the signal.
+	static float accumulatedZoffset = 0.0f; // Controlled with scroll wheel. Allows you to scroll through the signal.
+
+	// Register user input callbacks.
+	sdl.RegisterMouseInputCallback(MyApp::Input::LEFT_MOUSE_BUTTON, [&](const float x, const float y)
+	{
+		constexpr const float MOUSE_SENSITIVITY = 0.001f;
+		ProcessLMB(x * MOUSE_SENSITIVITY, y * MOUSE_SENSITIVITY, accumulatedYaw, accumulatedPitch, objectRotation, viewMatrix);
+	});
+	sdl.RegisterMouseInputCallback(MyApp::Input::RIGHT_MOUSE_BUTTON, [&](const float x, const float y)
+	{
+		constexpr const float WHEEL_SENSITIVITY = 1.0f;
+		ProcessRMB(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, samplesSpacing);
+	});
+	sdl.RegisterMouseInputCallback(MyApp::Input::SCROLL_WHEEL, [&](const float x, const float y)
+	{
+		constexpr const float WHEEL_SENSITIVITY = 0.1f;
+		ProcessScrollWheel(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, objectTranslation);
+	});
+	sdl.RegisterInputCallback(MyApp::Input::R, [&]()
+	{
+		ResetTransformations(accumulatedYaw, accumulatedPitch, samplesSpacing, objectRotation, objectTranslation, viewMatrix);
+	});
+
+	// Register rending callback.
+	sdl.RegisterRenderCallback([&]()
+	{
+		constexpr const MyMath::Box BOUNDS{ -2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f };
+		constexpr const MyMath::Mat4x4 ORTHO_PROJ_MAT = MyMath::OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top);
+		RenderFrequencyDomainSignal(sineFourierTransform, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl);
+	});
 }
 
 void MyApp::Application::OnStart()
 {
-	constexpr const float PI = 3.14159265359f;
-
-	static Mat4x4 rotation{};
-	static Mat4x4 translation{};
-	static Mat4x4 view{};
-	static float accumulatedYaw = 0.0f;
-	static float accumulatedPitch = 0.0f;
-	static float samplesSpacing = 1.0f;
-	static float accumulatedZoffset = 0.0f;
-
-	sdl_.RegisterMouseInputCallback(Input::LEFT_MOUSE_BUTTON, [&](const float x, const float y)
-	{
-		constexpr const float MOUSE_SENSITIVITY = 0.001f;
-		accumulatedYaw += x * MOUSE_SENSITIVITY;
-		accumulatedPitch -= y * MOUSE_SENSITIVITY;
-		rotation = {};
-		view = {};
-		rotation = MatrixMultiplication(rotation, RotationMatrix(UP, PI * 0.5f * accumulatedYaw));
-		view = MatrixMultiplication(view, RotationMatrix(LEFT, PI * 0.5f * accumulatedPitch));
-	});
-	sdl_.RegisterMouseInputCallback(Input::RIGHT_MOUSE_BUTTON, [&](const float x, const float y)
-	{
-		constexpr const float WHEEL_SENSITIVITY = 1.0f;
-		samplesSpacing += y * WHEEL_SENSITIVITY;
-		if (samplesSpacing <= 0.0f) samplesSpacing = 0.01f;
-	});
-	sdl_.RegisterMouseInputCallback(Input::SCROLL_WHEEL, [&](const float x, const float y)
-	{
-		constexpr const float MOUSE_SENSITIVITY = 0.1f;
-		accumulatedZoffset += y * MOUSE_SENSITIVITY;
-		translation.m23 = accumulatedZoffset;
-	});
-	sdl_.RegisterInputCallback(Input::R, [&]()
-	{
-		accumulatedYaw = 0.0f;
-		accumulatedPitch = 0.0f;
-		samplesSpacing = 1.0f;
-		accumulatedZoffset = 0.0f;
-		rotation = {};
-		translation = {};
-		view = {};
-	});
-
-	constexpr const size_t SAMPLE_RATE = 8000;
-	constexpr const size_t FREQ = 441;
-
-	std::vector<float> sine(SAMPLE_RATE, 0.0f);
-	for (size_t n = 0; n < sine.size(); n++)
-	{
-		sine[n] = GenerateSine(n, SAMPLE_RATE, FREQ);
-	}
-
-	auto& sound = audioEngine_.CreateSound(sine);
-	sound.Play();
-
-	static std::vector<std::complex<float>> fourierTransform(SAMPLE_RATE, 0.0f);
-	MyDFT::DFT(fourierTransform, sine, SAMPLE_RATE);
-
-	// TODO: use simple fft for a continuous visualization of the spectrum.
-
-	sdl_.RegisterRenderCallback([&]()
-	{
-		constexpr const Box BOUNDS{ -2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f };
-		constexpr const Mat4x4 ORTHO_PROJ_MAT = OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top);
-		constexpr const Mat4x4 modelMat{};
-
-		// Draw sine.
-		for (size_t n = 0; n < fourierTransform.size(); n++)
-		{
-
-			Vec4 pt0, pt1; // World position.
-			// Single vertices.
-			pt0 = { 0.0f, 0.0f, samplesSpacing * float(n) / float(fourierTransform.size()), 1.0f };
-			pt1 = { fourierTransform[n].real(), fourierTransform[n].imag(), samplesSpacing * float(n) / float(fourierTransform.size()), 1.0f };
-
-			// To world space.
-			pt0 = MatrixVectorMultiplication(modelMat, pt0);
-			pt1 = MatrixVectorMultiplication(modelMat, pt1);
-
-			pt0 = MatrixVectorMultiplication(rotation, pt0);
-			pt1 = MatrixVectorMultiplication(rotation, pt1);
-			pt0 = MatrixVectorMultiplication(translation, pt0);
-			pt1 = MatrixVectorMultiplication(translation, pt1);
-
-			// To view space.
-			pt0 = MatrixVectorMultiplication(view, pt0);
-			pt1 = MatrixVectorMultiplication(view, pt1);
-
-			// Cull points outside the viewing volume.
-			if (pt0.x < BOUNDS.back || pt0.x > BOUNDS.front ||
-				pt0.y < BOUNDS.right || pt0.y > BOUNDS.left ||
-				pt0.z < BOUNDS.bottom || pt0.z > BOUNDS.top) continue;
-			if (pt1.x < BOUNDS.back || pt1.x > BOUNDS.front ||
-				pt1.y < BOUNDS.right || pt1.y > BOUNDS.left ||
-				pt1.z < BOUNDS.bottom || pt1.z > BOUNDS.top) continue;
-
-			// To clip space.
-			pt0 = MatrixVectorMultiplication(ORTHO_PROJ_MAT, pt0);
-			pt1 = MatrixVectorMultiplication(ORTHO_PROJ_MAT, pt1);
-
-			assert(pt0.x >= -1.0f && pt0.x <= 1.0f &&
-				   pt0.y >= -1.0f && pt0.y <= 1.0f &&
-				   pt0.z >= -1.0f && pt0.z <= 1.0f && "Normalized device coordinate lies outside the normal range.");
-			assert(pt1.x >= -1.0f && pt1.x <= 1.0f &&
-				   pt1.y >= -1.0f && pt1.y <= 1.0f &&
-				   pt1.z >= -1.0f && pt1.z <= 1.0f && "Normalized device coordinate lies outside the normal range.");
-
-			const Vec3 ndcPt0 = {pt0.x, pt0.y, pt0.z};
-			const Vec3 ndcPt1 = {pt1.x, pt1.y, pt1.z};
-
-			// Clip to window coords following "Viewport transform" section of: https://www.khronos.org/opengl/wiki/Viewport_Transform (note: adjusted to fit my coordinate convention). Yields Window coordinates.
-			const Vec2 windowPt0 =
-			{
-				sdl_.displaySize * 0.5f * -ndcPt0.y + 0 + sdl_.displaySize * 0.5f,
-				sdl_.displaySize * 0.5f * ndcPt0.z + 0 + sdl_.displaySize * 0.5f
-			};
-			const Vec2 windowPt1 =
-			{
-				sdl_.displaySize * 0.5f * -ndcPt1.y + 0 + sdl_.displaySize * 0.5f,
-				sdl_.displaySize * 0.5f * ndcPt1.z + 0 + sdl_.displaySize * 0.5f
-			};
-			assert(windowPt0.x >= 0.0f && windowPt0.x <= sdl_.displaySize &&
-				   windowPt0.y >= 0.0f && windowPt0.y <= sdl_.displaySize && "Window point lies outside the screen's bounds.");
-			assert(windowPt1.x >= 0.0f && windowPt1.x <= sdl_.displaySize &&
-				   windowPt1.y >= 0.0f && windowPt1.y <= sdl_.displaySize && "Window point lies outside the screen's bounds.");
-
-			const Vec2 screenPt0 = { windowPt0.x, sdl_.displaySize - windowPt0.y };
-			const Vec2 screenPt1 = { windowPt1.x, sdl_.displaySize - windowPt1.y };
-
-			// Draw vertices.
-			sdl_.RenderLine(screenPt0.x, screenPt0.y, screenPt1.x, screenPt1.y);
-		}
-	});
+	VisualizeSineInFreqencyDomain(audioEngine_, sdl_);
 }
 
 void MyApp::Application::OnUpdate()

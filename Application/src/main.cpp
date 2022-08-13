@@ -197,163 +197,203 @@ inline void RenderTimeDomainSignal(const std::vector<float>& signal, const float
 	}
 }
 
-void VisualizeFreqencyDomainSignal(MyApp::AudioEngine& audioEngine, MyApp::SdlManager& sdl, const std::vector<std::complex<float>>& signal, const MyApp::ColorBytes& color, const float& zOffset)
+constexpr const MyMath::Box BOUNDS{ -2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f };
+constexpr const MyMath::Mat4x4 ORTHO_PROJ_MAT = MyMath::OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top);
+// Static data for 3D rendering.
+MyMath::Mat4x4 objectRotation = MyMath::MAT4_IDENTITY;
+MyMath::Mat4x4 objectTranslation = MyMath::MAT4_IDENTITY;
+MyMath::Mat4x4 viewMatrix = MyMath::MAT4_IDENTITY;
+float accumulatedYaw = 0.0f; // Controlled with left mouse button. Allows you to rotate the signal around.
+float accumulatedPitch = 0.0f; // Controlled with left mouse button. Allows you to pitch the signal towards and away from camera.
+float samplesSpacing = 1.0f; // Controlled with right mouse button. Allows you to zoom into the signal.
+float accumulatedZoffset = 0.0f; // Controlled with scroll wheel. Allows you to scroll through the signal.
+
+enum class Waveform : int
 {
-	// Static data for 3D rendering.
-	static MyMath::Mat4x4 objectRotation = MyMath::MAT4_IDENTITY;
-	static MyMath::Mat4x4 objectTranslation = MyMath::MAT4_IDENTITY;
-	static MyMath::Mat4x4 viewMatrix = MyMath::MAT4_IDENTITY;
-	static float accumulatedYaw = 0.0f; // Controlled with left mouse button. Allows you to rotate the signal around.
-	static float accumulatedPitch = 0.0f; // Controlled with left mouse button. Allows you to pitch the signal towards and away from camera.
-	static float samplesSpacing = 1.0f; // Controlled with right mouse button. Allows you to zoom into the signal.
-	static float accumulatedZoffset = 0.0f; // Controlled with scroll wheel. Allows you to scroll through the signal.
+	Generated = 0,
+	GeneratedFreqDomain,
+	GeneratedFromDFT,
 
-	// Register user input callbacks.
-	sdl.RegisterMouseInputCallback(MyApp::Input::LEFT_MOUSE_BUTTON, [&](const float x, const float y)
-	{
-		constexpr const float MOUSE_SENSITIVITY = 0.001f;
-		ProcessLMB(x * MOUSE_SENSITIVITY, y * MOUSE_SENSITIVITY, accumulatedYaw, accumulatedPitch, objectRotation, viewMatrix);
-	});
-	sdl.RegisterMouseInputCallback(MyApp::Input::RIGHT_MOUSE_BUTTON, [&](const float x, const float y)
-	{
-		constexpr const float WHEEL_SENSITIVITY = 1.0f;
-		ProcessRMB(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, samplesSpacing);
-	});
-	sdl.RegisterMouseInputCallback(MyApp::Input::SCROLL_WHEEL, [&](const float x, const float y)
-	{
-		constexpr const float WHEEL_SENSITIVITY = 0.1f;
-		ProcessScrollWheel(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, objectTranslation);
-	});
-	sdl.RegisterInputCallback(MyApp::Input::R, [&]()
-	{
-		ResetTransformations(accumulatedYaw, accumulatedPitch, samplesSpacing, objectRotation, objectTranslation, viewMatrix);
-	});
+	SynthesizedFreqDomain,
+	SynthesizedFromDFT
+};
 
-	// Register rending callback.
-	sdl.RegisterRenderCallback([&]()
-	{
-		constexpr const MyMath::Box BOUNDS{ -2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f };
-		constexpr const MyMath::Mat4x4 ORTHO_PROJ_MAT = MyMath::OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top);
-		RenderFrequencyDomainSignal(signal, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl, color, zOffset);
-	});
-}
-
-// TODO: fix the need to pass static variables by reference.
-void VisualizeTimeDomainSignal(MyApp::AudioEngine& audioEngine, MyApp::SdlManager& sdl, const std::vector<float>& signal, const MyApp::ColorBytes& color, const float& zOffset)
+enum class SoundToPlay : int
 {
-	// Static data for 3D rendering.
-	static MyMath::Mat4x4 objectRotation = MyMath::MAT4_IDENTITY;
-	static MyMath::Mat4x4 objectTranslation = MyMath::MAT4_IDENTITY;
-	static MyMath::Mat4x4 viewMatrix = MyMath::MAT4_IDENTITY;
-	static float accumulatedYaw = 0.0f; // Controlled with left mouse button. Allows you to rotate the signal around.
-	static float accumulatedPitch = 0.0f; // Controlled with left mouse button. Allows you to pitch the signal towards and away from camera.
-	static float samplesSpacing = 1.0f; // Controlled with right mouse button. Allows you to zoom into the signal.
-	static float accumulatedZoffset = 0.0f; // Controlled with scroll wheel. Allows you to scroll through the signal.
+	None = 0,
 
-	// Register user input callbacks.
-	sdl.RegisterMouseInputCallback(MyApp::Input::LEFT_MOUSE_BUTTON, [&](const float x, const float y)
-	{
-		constexpr const float MOUSE_SENSITIVITY = 0.001f;
-		ProcessLMB(x * MOUSE_SENSITIVITY, y * MOUSE_SENSITIVITY, accumulatedYaw, accumulatedPitch, objectRotation, viewMatrix);
-	});
-	sdl.RegisterMouseInputCallback(MyApp::Input::RIGHT_MOUSE_BUTTON, [&](const float x, const float y)
-	{
-		constexpr const float WHEEL_SENSITIVITY = 1.0f;
-		ProcessRMB(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, samplesSpacing);
-	});
-	sdl.RegisterMouseInputCallback(MyApp::Input::SCROLL_WHEEL, [&](const float x, const float y)
-	{
-		constexpr const float WHEEL_SENSITIVITY = 0.1f;
-		ProcessScrollWheel(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, objectTranslation);
-	});
-	sdl.RegisterInputCallback(MyApp::Input::R, [&]()
-	{
-		ResetTransformations(accumulatedYaw, accumulatedPitch, samplesSpacing, objectRotation, objectTranslation, viewMatrix);
-	});
+	Generated,
+	GeneratedFromDFT,
 
-	// Register rending callback.
-	sdl.RegisterRenderCallback([&]()
-	{
-		constexpr const MyMath::Box BOUNDS{ -2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f };
-		constexpr const MyMath::Mat4x4 ORTHO_PROJ_MAT = MyMath::OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top);
-		RenderTimeDomainSignal(signal, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl, color, zOffset);
-	});
-}
+	Synthesized
+};
+
+constexpr const size_t SINE_SAMPLE_RATE = 8000;
+constexpr const size_t SINE_FREQ = 441;
+constexpr const float ANGLE_IN_RADS = -0.5f * MyMath::PI;
+constexpr const float SYNTHESIZED_COMPLEX_MAGNITUDE = 1.0f * SINE_SAMPLE_RATE * 0.5f;
+const std::array<float, 5> offsets = { 0.0f, 0.01f, 0.02f, 0.03f, 0.04f }; // Has to be static const, not a constexpr const because the values are passed to lambdas.
+const std::array<MyApp::ColorBytes, 5> colors = { { {255, 0,0,255}, {0,255,0,255}, {0,0,255,255}, {255,255,0,255}, {255,0,255,255} } }; // Idem.
+
+SoundToPlay toPlay = SoundToPlay::None;
+std::vector<Waveform> toDisplay = {};
+std::vector<float> generatedTimeDomain(SINE_SAMPLE_RATE, 0.0f);
+std::vector<std::complex<float>> generatedFreqDomain(SINE_SAMPLE_RATE, 0.0f);
+std::vector<float> generatedTimeDomainFromDFT(SINE_SAMPLE_RATE, 0.0f);
+std::vector<float> synthesizedTimeDomainFromDFT(SINE_SAMPLE_RATE, 0.0f);
+std::vector<std::complex<float>> synthesizedFreqDomain(SINE_SAMPLE_RATE, 0.0f);
 
 void MyApp::Application::OnStart()
 {
-
-	// Generate a 441 Hz sine to be visualized in time and frequency domains.
-	constexpr const size_t SINE_SAMPLE_RATE = 8000;
-	constexpr const size_t SINE_FREQ = 441;
-	static std::vector<float> sine(SINE_SAMPLE_RATE, 0.0f);
-	for (size_t n = 0; n < sine.size(); n++)
+	// Compute signals for the generated sine.
+	for (size_t n = 0; n < generatedTimeDomain.size(); n++)
 	{
-		sine[n] = GenerateSine(n, SINE_SAMPLE_RATE, SINE_FREQ);
+		generatedTimeDomain[n] = GenerateSine(n, SINE_SAMPLE_RATE, SINE_FREQ);
 	}
-	
-	// Create a sound to hear the sine signal.
-	auto& sound = audioEngine_.CreateSound(sine);
-	sound.Play();
-	
-	// Compute the full discrete fourier transform of the sine.
-	static std::vector<std::complex<float>> sineFourierTransform(SINE_SAMPLE_RATE, 0.0f);
-	MyDFT::DFT(sineFourierTransform, sine, SINE_SAMPLE_RATE);
-	
-	static const float offset0 = 0.0f;
-	static const float offset1 = 0.01f;
-	VisualizeFreqencyDomainSignal(audioEngine_, sdl_, sineFourierTransform, MyApp::COLOR_RED, offset0);
-	VisualizeTimeDomainSignal(audioEngine_, sdl_, sine, MyApp::COLOR_GREEN, offset1);
+	MyDFT::DFT(generatedFreqDomain, generatedTimeDomain, SINE_SAMPLE_RATE);
+	MyDFT::IDFT(generatedTimeDomainFromDFT, generatedFreqDomain, SINE_SAMPLE_RATE);
 
+	// Compute signals for the synthesized sine.
+	synthesizedFreqDomain[SINE_FREQ] = std::complex<float>(std::cosf(ANGLE_IN_RADS) * SYNTHESIZED_COMPLEX_MAGNITUDE, std::sinf(ANGLE_IN_RADS) * SYNTHESIZED_COMPLEX_MAGNITUDE);
+	synthesizedFreqDomain[SINE_SAMPLE_RATE - SINE_FREQ] = std::complex<float>(-std::cosf(ANGLE_IN_RADS) * SYNTHESIZED_COMPLEX_MAGNITUDE, -std::sinf(ANGLE_IN_RADS) * SYNTHESIZED_COMPLEX_MAGNITUDE);
+	MyDFT::IDFT(synthesizedTimeDomainFromDFT, synthesizedFreqDomain, SINE_SAMPLE_RATE);
 
-	// Synthesize a frequency domain signal whose time domain representation is a 441 Hz sine.
-	// constexpr const size_t SIGNAL_SAMPLE_RATE = 8000;
-	// constexpr const size_t SIGNAL_FREQ = 441;
-	// constexpr const float angleInRad = -0.5f * MyMath::PI;
-	// constexpr const float complexMagnitude = 1.0f * SIGNAL_SAMPLE_RATE;
-	// static std::vector<std::complex<float>> synthesizedFreqDom(SIGNAL_SAMPLE_RATE, 0.0f);
-	// synthesizedFreqDom[SIGNAL_FREQ] = std::complex<float>(std::cosf(angleInRad) * complexMagnitude, std::sinf(angleInRad) * complexMagnitude);
-	// 
-	// static std::vector<float> timeDom(SIGNAL_SAMPLE_RATE, 0.0f);
-	// MyDFT::IDFT(timeDom, synthesizedFreqDom, SIGNAL_SAMPLE_RATE);
-	// 
-	// static std::vector<float> sine(SIGNAL_SAMPLE_RATE, 0.0f);
-	// for (size_t n = 0; n < sine.size(); n++)
-	// {
-	// 	sine[n] = GenerateSine(n, SIGNAL_SAMPLE_RATE, SIGNAL_FREQ);
-	// }
-	// 
-	// static const float offset0 = 0.0f;
-	// static const float offset1 = 0.01f;
-	// VisualizeTimeDomainSignal(audioEngine_, sdl_, timeDom, MyApp::COLOR_RED, offset0);
-	// VisualizeTimeDomainSignal(audioEngine_, sdl_, sine, MyApp::COLOR_GREEN, offset1);
+	if (!assetManager_.WriteWav(generatedTimeDomain, (std::string(APPLICATION_WAV_OUTPUTS_DIR) + "generated.wav").c_str(), 1, SINE_SAMPLE_RATE)) {
+		throw std::runtime_error(std::string("Couldn't write wav to file."));
+	}
+	if (!assetManager_.WriteWav(generatedTimeDomainFromDFT, (std::string(APPLICATION_WAV_OUTPUTS_DIR) + "generatedFromDFT.wav").c_str(), 1, SINE_SAMPLE_RATE)) {
+		throw std::runtime_error(std::string("Couldn't write wav to file."));
+	};
+	if (!assetManager_.WriteWav(synthesizedTimeDomainFromDFT, (std::string(APPLICATION_WAV_OUTPUTS_DIR) + "synthesizedFromDFT.wav").c_str(), 1, SINE_SAMPLE_RATE)) {
+		throw std::runtime_error(std::string("Couldn't write wav to file."));
+	};
 
+	sdl_.RegisterImguiCallback([&]()
+		{
+			constexpr const char* soundNames[4] = { "NONE", "Generated sine", "Generated sine reconstructed from it's DFT", "Sine synthesized from constructed DFT" };
+			static std::array<bool, 5> whetherToDisplay({ false, false, false, false, false });
 
-	// Draw our synthesized frequency domain and the one given by DFT. We can see that the two signals are reversed.
-	// constexpr const size_t SIGNAL_SAMPLE_RATE = 8000;
-	// constexpr const size_t SIGNAL_FREQ = 441;
-	// constexpr const float angleInRad = -0.5f * MyMath::PI;
-	// constexpr const float complexMagnitude = 1.0f * SIGNAL_SAMPLE_RATE;
-	// static std::vector<std::complex<float>> synthesizedFreqDom(SIGNAL_SAMPLE_RATE, 0.0f);
-	// synthesizedFreqDom[SIGNAL_FREQ] = std::complex<float>(std::cosf(angleInRad) * complexMagnitude, std::sinf(angleInRad) * complexMagnitude);
-	// 
-	// std::vector<float> sine(SIGNAL_SAMPLE_RATE, 0.0f);
-	// for (size_t n = 0; n < sine.size(); n++)
-	// {
-	// 	sine[n] = GenerateSine(n, SIGNAL_SAMPLE_RATE, SIGNAL_FREQ);
-	// }
-	// static std::vector<std::complex<float>> generatedFreqDom(SIGNAL_SAMPLE_RATE, 0.0f);
-	// MyDFT::DFT(generatedFreqDom, sine, SIGNAL_SAMPLE_RATE);
-	// 
-	// static const float offset0 = 0.0f;
-	// static const float offset1 = 0.01f;
-	// VisualizeFreqencyDomainSignal(audioEngine_, sdl_, generatedFreqDom, MyApp::COLOR_RED, offset0);
-	// VisualizeFreqencyDomainSignal(audioEngine_, sdl_, synthesizedFreqDom, MyApp::COLOR_GREEN, offset1);
+			ImGui::Begin("Visualizer");
+
+			ImGui::Text("Controls\nLeft mouse button: rotate, right mouse button: scale, mouse wheel: scroll through the signal, R: reset the view.\n");
+
+			ImGui::ListBox("Sound to play", (int*)&toPlay, soundNames, 4);
+
+			bool updateDisplayedWaveform = false;
+			updateDisplayedWaveform = ImGui::Checkbox("Show Generated in time-domain: ", &(whetherToDisplay[0])) ? true : updateDisplayedWaveform;
+			updateDisplayedWaveform = ImGui::Checkbox("Show Generated in frequency-domain: ", &(whetherToDisplay[1])) ? true : updateDisplayedWaveform;
+			updateDisplayedWaveform = ImGui::Checkbox("Show reconstructed Generated in frequency-domain: ", &(whetherToDisplay[2])) ? true : updateDisplayedWaveform;
+			updateDisplayedWaveform = ImGui::Checkbox("Show Synthesized in frequency-domain: ", &(whetherToDisplay[3])) ? true : updateDisplayedWaveform;
+			updateDisplayedWaveform = ImGui::Checkbox("Show Synthesized in time-domain: ", &(whetherToDisplay[4])) ? true : updateDisplayedWaveform;
+
+			ImGui::End();
+
+			if (updateDisplayedWaveform)
+			{
+				toDisplay.resize(0);
+				for (int i = 0; i < (int)whetherToDisplay.size(); i++)
+				{
+					if (whetherToDisplay[i]) toDisplay.push_back((Waveform)i);
+				}
+			}
+		});
+
+	// Register user input callbacks.
+	sdl_.RegisterMouseInputCallback(MyApp::Input::LEFT_MOUSE_BUTTON, [&](const float x, const float y)
+		{
+			constexpr const float MOUSE_SENSITIVITY = 0.001f;
+			ProcessLMB(x * MOUSE_SENSITIVITY, y * MOUSE_SENSITIVITY, accumulatedYaw, accumulatedPitch, objectRotation, viewMatrix);
+		});
+	sdl_.RegisterMouseInputCallback(MyApp::Input::RIGHT_MOUSE_BUTTON, [&](const float x, const float y)
+		{
+			constexpr const float WHEEL_SENSITIVITY = 1.0f;
+			ProcessRMB(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, samplesSpacing);
+		});
+	sdl_.RegisterMouseInputCallback(MyApp::Input::SCROLL_WHEEL, [&](const float x, const float y)
+		{
+			constexpr const float WHEEL_SENSITIVITY = 0.1f;
+			ProcessScrollWheel(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY, objectTranslation);
+		});
+	sdl_.RegisterInputCallback(MyApp::Input::R, [&]()
+		{
+			ResetTransformations(accumulatedYaw, accumulatedPitch, samplesSpacing, objectRotation, objectTranslation, viewMatrix);
+		});
 }
 
 void MyApp::Application::OnUpdate()
 {
+	static auto lastUpdateSounds = SoundToPlay::None;
+	if (toPlay != lastUpdateSounds)
+	{
+		audioEngine_.DestroyAll();
 
+		switch (toPlay)
+		{
+		case SoundToPlay::None:
+			break;
+		case SoundToPlay::Generated: {
+			MyApp::Sound* generatedSound = audioEngine_.CreateSound(generatedTimeDomain);
+			generatedSound->Play();
+		}
+			break;
+		case SoundToPlay::GeneratedFromDFT: {
+			MyApp::Sound* generatedSoundFromDFT = audioEngine_.CreateSound(generatedTimeDomainFromDFT);
+			generatedSoundFromDFT->Play();
+		}
+			break;
+		case SoundToPlay::Synthesized: {
+			MyApp::Sound* synthesizedSoundFromDFT = audioEngine_.CreateSound(synthesizedTimeDomainFromDFT);
+			synthesizedSoundFromDFT->Play();
+		}
+			break;
+		default:
+			break;
+		}
+	}
+	lastUpdateSounds = toPlay;
+
+	static auto lastUpdateWaveforms = std::vector<Waveform>();
+	if (toDisplay != lastUpdateWaveforms)
+	{
+		sdl_.ClearRenderCallbacks();
+		sdl_.RegisterRenderCallback([&]()
+			{
+				for (size_t i = 0; i < toDisplay.size(); i++)
+				{
+					switch (toDisplay[i])
+					{
+					case Waveform::Generated:
+					{
+						RenderTimeDomainSignal(generatedTimeDomain, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl_, colors[i], offsets[i]);
+					}break;
+
+					case Waveform::GeneratedFreqDomain:
+					{
+						RenderFrequencyDomainSignal(generatedFreqDomain, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl_, colors[i], offsets[i]);
+					}break;
+
+					case Waveform::GeneratedFromDFT:
+					{
+						RenderTimeDomainSignal(generatedTimeDomainFromDFT, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl_, colors[i], offsets[i]);
+					}break;
+
+					case Waveform::SynthesizedFreqDomain:
+					{
+						RenderFrequencyDomainSignal(synthesizedFreqDomain, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl_, colors[i], offsets[i]);
+					}break;
+
+					case Waveform::SynthesizedFromDFT:
+					{
+						RenderTimeDomainSignal(synthesizedTimeDomainFromDFT, samplesSpacing, objectRotation, objectTranslation, viewMatrix, BOUNDS, ORTHO_PROJ_MAT, sdl_, colors[i], offsets[i]);
+					}break;
+
+					default:
+						break;
+					}
+				}
+			});
+	}
+	lastUpdateWaveforms = toDisplay;
 }
 
 void MyApp::Application::OnShutdown()

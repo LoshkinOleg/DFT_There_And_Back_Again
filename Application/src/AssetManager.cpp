@@ -46,6 +46,7 @@ bool MyApp::AssetManager::WriteWav(const std::vector<float>& data, const char* p
 		return false;
 	}
 
+	drwav_uninit(&wav);
 	return true;
 }
 

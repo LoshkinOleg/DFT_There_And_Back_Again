@@ -50,6 +50,10 @@ void MyApp::SdlManager::RegisterRenderCallback(std::function<void(void)> callbac
 	renderCallbacks_.push_back(callback);
 }
 
+void MyApp::SdlManager::ClearRenderCallbacks() {
+	renderCallbacks_.clear();
+}
+
 bool MyApp::SdlManager::Update()
 {
 	EASY_BLOCK("ProcessInputs()");

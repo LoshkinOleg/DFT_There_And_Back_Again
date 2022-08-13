@@ -358,3 +358,9 @@ MigrationBackup/
 # Ignore stuff python leaves behind.
 */__pycache__/
 */.vs/
+
+# Ignore program outputs
+txtOutputs/*
+wavOutputs/*
+profilerOutputs/*
+*/*.prof

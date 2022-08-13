@@ -1,6 +1,7 @@
 ﻿#include "MyDFT.h"
 
 #include <iostream>
+#include <algorithm>
 
 #include "MyUtils.h"
 
@@ -96,6 +97,7 @@ void MyDFT::IDFT(MyUtils::RealSignal& out, const MyUtils::ComplexSignal& y, cons
 			x[n] += (y[k] * EulersFormula(2.0f * MyUtils::PI * k * n / N)).real();
 		}
 		x[n] /= N;
+		x[n] = std::clamp(x[n], -1.0f, 1.0f); // Out-of-bounds samples can be generated even with correct N due to float imprecision which results in crackling when played back by a device that expects a normalized PCM.
 	}
 
 	if (printProgress) std::cout << "IDFT done." << std::endl;

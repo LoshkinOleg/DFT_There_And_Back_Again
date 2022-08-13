@@ -170,7 +170,7 @@ MyApp::AudioEngine::~AudioEngine()
 	if (err != paNoError) std::cerr << std::string("Error shutting down PortAudio: ") + Pa_GetErrorText(err);
 }
 
-MyApp::Sound& MyApp::AudioEngine::CreateSound(const char* path, AssetManager& assetManager)
+MyApp::Sound* MyApp::AudioEngine::CreateSound(const char* path, AssetManager& assetManager)
 {
 	unsigned int nrOfChannels, sampleRate;
 	auto wavData = assetManager.LoadWav(path, nrOfChannels, sampleRate);
@@ -178,20 +178,20 @@ MyApp::Sound& MyApp::AudioEngine::CreateSound(const char* path, AssetManager& as
 	sounds_.push_back(Sound(bufferSize));
 	sounds_.back().data = wavData;
 
-	return sounds_.back();
+	return &sounds_.back();
 }
-MyApp::Sound& MyApp::AudioEngine::CreateSound(const std::vector<float>& data)
+MyApp::Sound* MyApp::AudioEngine::CreateSound(const std::vector<float>& data)
 {
 	sounds_.push_back(Sound(bufferSize));
 	sounds_.back().data = data;
 
-	return sounds_.back();
+	return &sounds_.back();
 }
-MyApp::Sound& MyApp::AudioEngine::DuplicateSound(const Sound& other)
+MyApp::Sound* MyApp::AudioEngine::DuplicateSound(const Sound& other)
 {
 	sounds_.push_back(Sound(bufferSize));
 	sounds_.back().data = other.data;
-	return sounds_.back();
+	return &sounds_.back();
 }
 
 void MyApp::AudioEngine::StopAll()
@@ -200,6 +200,11 @@ void MyApp::AudioEngine::StopAll()
 	{
 		sounds_[i].Stop();
 	}
+}
+
+void MyApp::AudioEngine::DestroyAll() {
+	StopAll();
+	sounds_.clear();
 }
 
 int MyApp::AudioEngine::ServiceAudio_(const void* input, void* output,

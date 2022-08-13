@@ -49,6 +49,7 @@ namespace MyApp
 		void RegisterMouseInputCallback(const Input input, std::function<void(const float, const float)> callback);
 		void RegisterImguiCallback(std::function<void(void)> callback);
 		void RegisterRenderCallback(std::function<void(void)> callback);
+		void ClearRenderCallbacks();
 
 		bool Update();
 

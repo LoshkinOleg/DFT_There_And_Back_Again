@@ -65,11 +65,12 @@ namespace MyApp
 		AudioEngine(const unsigned int sampleRate, const unsigned int bufferSize);
 		~AudioEngine();
 
-		Sound& CreateSound(const char* path, AssetManager& assetManager);
-		Sound& CreateSound(const std::vector<float>& data);
-		Sound& DuplicateSound(const Sound& other);
+		Sound* CreateSound(const char* path, AssetManager& assetManager);
+		Sound* CreateSound(const std::vector<float>& data);
+		Sound* DuplicateSound(const Sound& other);
 
 		void StopAll();
+		void DestroyAll();
 
 		void ProcessAudio();
 

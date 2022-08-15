@@ -1,34 +1,112 @@
 #pragma once
 
+#include <cassert>
+#include <iostream>
+
 namespace MyMath
 {
 	constexpr const float PI = 3.14159265359f;
-	constexpr const float E =  2.71828182845f;
 
 	struct Vec2
 	{
 		float x = 0;
 		float y = 0;
+
+		constexpr inline bool operator==(const Vec2& other) const
+		{
+			return	x == other.x &&
+					y == other.y;
+		}
+
+		constexpr inline Vec2 operator+(const Vec2& other) const
+		{
+			return
+			{
+				x + other.x,
+				y + other.y
+			};
+		}
+
+		constexpr inline Vec2 operator-(const Vec2& other) const
+		{
+			return
+			{
+				x - other.x,
+				y - other.y
+			};
+		}
+
+		constexpr inline Vec2 operator-() const
+		{
+			return
+			{
+				-x,
+				-y
+			};
+		}
 	};
 
-	constexpr const Vec2 VEC2_ZERO = {};
-	constexpr const Vec2 VEC2_ONE = {1.0f, 1.0f};
+	// Following SDL's coordinate conventions for screen space coordinates.
+	constexpr const Vec2 VEC2_ZERO = {0.0f, 0.0f};
 	constexpr const Vec2 VEC2_RIGHT = {1.0f, 0.0f};
 	constexpr const Vec2 VEC2_DOWN = {0.0f, 1.0f};
+	constexpr const Vec2 VEC2_LEFT = -VEC2_RIGHT;
+	constexpr const Vec2 VEC2_UP = -VEC2_DOWN;
+	constexpr const Vec2 VEC2_ONE = VEC2_RIGHT + VEC2_DOWN;
 
 	struct Vec3
 	{
 		float x = 0;
 		float y = 0;
 		float z = 0;
+
+		constexpr inline bool operator==(const Vec3& other) const
+		{
+			return	x == other.x &&
+					y == other.y &&
+					z == other.z;
+		}
+
+		constexpr inline Vec3 operator+(const Vec3& other) const
+		{
+			return
+			{
+				x + other.x,
+				y + other.y,
+				z + other.z
+			};
+		}
+
+		constexpr inline Vec3 operator-(const Vec3& other) const
+		{
+			return
+			{
+				x - other.x,
+				y - other.y,
+				z - other.z
+			};
+		}
+
+		constexpr inline Vec3 operator-() const
+		{
+			return
+			{
+				-x,
+				-y,
+				-z
+			};
+		}
 	};
 
-	// Following 3DTI's coordinate convention... really should have followed the mathematical right-hand convention instead... oh well.
-	constexpr const Vec3 VEC3_ZERO = {};
-	constexpr const Vec3 VEC3_ONE = { 1.0f, 1.0f, 1.0f };
-	constexpr const Vec3 VEC3_FRONT = { 1.0f, 0.0f, 0.0f };
-	constexpr const Vec3 VEC3_LEFT = { 0.0f, 1.0f, 0.0f };
-	constexpr const Vec3 VEC3_UP = { 0.0f, 0.0f, 1.0f };
+	// Following the right-hand-rule for 3D coordinates: https://en.wikipedia.org/wiki/Right-hand_rule
+	constexpr const Vec3 VEC3_ZERO =	{ 0.0f, 0.0f, 0.0f };
+	constexpr const Vec3 VEC3_RIGHT =	{ 1.0f, 0.0f, 0.0f };
+	constexpr const Vec3 VEC3_FRONT =	{ 0.0f, 1.0f, 0.0f };
+	constexpr const Vec3 VEC3_UP =		{ 0.0f, 0.0f, 1.0f };
+	constexpr const Vec3 VEC3_LEFT = -VEC3_RIGHT;
+	constexpr const Vec3 VEC3_BACK = -VEC3_FRONT;
+	constexpr const Vec3 VEC3_DOWN = -VEC3_UP;
+	constexpr const Vec3 VEC3_ONE = VEC3_RIGHT + VEC3_FRONT + VEC3_UP;
 
 	struct Vec4
 	{
@@ -37,21 +115,64 @@ namespace MyMath
 		float z = 0;
 		float w = 1; // 1 by default since that's what we usually need when dealing with 4x4 transform matrices.
 
-		inline bool operator==(const Vec4& other) const
+		constexpr inline bool operator==(const Vec4& other) const
 		{
 			return	x == other.x &&
-				y == other.y &&
-				z == other.z &&
-				w == other.w;
+					y == other.y &&
+					z == other.z &&
+					w == other.w;
+		}
+
+		constexpr inline Vec4 operator+(const Vec4& other) const
+		{
+			return
+			{
+				x + other.x,
+				y + other.y,
+				z + other.z,
+				w + other.w
+			};
+		}
+
+		constexpr inline Vec4 operator-(const Vec4& other) const
+		{
+			return
+			{
+				x - other.x,
+				y - other.y,
+				z - other.z,
+				w - other.w
+			};
+		}
+
+		constexpr inline Vec4 operator-() const
+		{
+			return
+			{
+				-x,
+				-y,
+				-z,
+				-w
+			};
 		}
 	};
 
-	constexpr const Vec4 VEC4_ZERO = { 0.0f, 0.0f, 0.0f, 1.0f };
-	constexpr const Vec4 VEC4_TRUE_ZERO = { 0.0f, 0.0f, 0.0f, 0.0f };
-	constexpr const Vec4 VEC4_ONE = { 1.0f, 1.0f, 1.0f, 1.0f };
-	constexpr const Vec4 VEC4_FRONT = { 1.0f, 0.0f, 0.0f, 1.0f };
-	constexpr const Vec4 VEC4_LEFT = { 0.0f, 1.0f, 0.0f, 1.0f };
-	constexpr const Vec4 VEC4_UP = { 0.0f, 0.0f, 1.0f, 1.0f };
+	// Following the right-hand-rule as well for 4D coordinates but distinguishing between "true" zero and unit vectors and "regular" versions of them that have the w component set to 1 since Vec4's are usually used in 4x4 matrices.
+	constexpr const Vec4 VEC4_TRUE_ZERO =	{ VEC3_ZERO.x,	VEC3_ZERO.y,	VEC3_ZERO.z,	0.0f };
+	constexpr const Vec4 VEC4_TRUE_RIGHT =	{ VEC3_RIGHT.x, VEC3_RIGHT.y,	VEC3_RIGHT.z,	0.0f };
+	constexpr const Vec4 VEC4_TRUE_FRONT =	{ VEC3_FRONT.x, VEC3_FRONT.y,	VEC3_FRONT.z,	0.0f };
+	constexpr const Vec4 VEC4_TRUE_UP =		{ VEC3_UP.x,	VEC3_UP.y,		VEC3_UP.z,		0.0f };
+	constexpr const Vec4 VEC4_W_UNIT =		{ VEC3_ZERO.x,	VEC3_ZERO.y,	VEC3_ZERO.z,	1.0f };
+	constexpr const Vec4 VEC4_ZERO =		 VEC4_TRUE_ZERO		+ VEC4_W_UNIT;
+	constexpr const Vec4 VEC4_RIGHT =		 VEC4_TRUE_RIGHT	+ VEC4_W_UNIT;
+	constexpr const Vec4 VEC4_FRONT =		 VEC4_TRUE_FRONT	+ VEC4_W_UNIT;
+	constexpr const Vec4 VEC4_UP =			 VEC4_TRUE_UP		+ VEC4_W_UNIT;
+	constexpr const Vec4 VEC4_TRUE_LEFT =	-VEC4_TRUE_RIGHT;
+	constexpr const Vec4 VEC4_TRUE_BACK =	-VEC4_TRUE_FRONT;
+	constexpr const Vec4 VEC4_TRUE_DOWN =	-VEC4_TRUE_UP;
+	constexpr const Vec4 VEC4_LEFT =		 VEC4_TRUE_LEFT		+ VEC4_W_UNIT;
+	constexpr const Vec4 VEC4_BACK =		 VEC4_TRUE_BACK		+ VEC4_W_UNIT;
+	constexpr const Vec4 VEC4_DOWN =		 VEC4_TRUE_DOWN		+ VEC4_W_UNIT;
 
 	struct Mat4x4
 	{
@@ -60,7 +181,7 @@ namespace MyMath
 		float m20 = 0.0f; float m21 = 0.0f; float m22 = 1.0f; float m23 = 0.0f;
 		float m30 = 0.0f; float m31 = 0.0f; float m32 = 0.0f; float m33 = 1.0f;
 
-		inline bool operator==(const Mat4x4& other) const
+		constexpr inline bool operator==(const Mat4x4& other) const
 		{
 			return	m00 == other.m00 && m01 == other.m01 && m02 == other.m02 && m03 == other.m03 &&
 				m10 == other.m10 && m11 == other.m11 && m12 == other.m12 && m13 == other.m13 &&
@@ -68,7 +189,7 @@ namespace MyMath
 				m30 == other.m30 && m31 == other.m31 && m32 == other.m32 && m33 == other.m33;
 		}
 
-		Mat4x4 Inverse() const
+		constexpr Mat4x4 Inverse() const
 		{
 			// Taken from: https://www.thecrazyprogrammer.com/2017/02/c-c-program-find-inverse-matrix.html
 
@@ -107,7 +228,7 @@ namespace MyMath
 
 	constexpr const Mat4x4 MAT4_IDENTITY = Mat4x4{};
 
-	inline Vec4 MatrixVectorMultiplication(const Mat4x4 a, const Vec4 b)
+	constexpr inline Vec4 MatrixVectorMultiplication(const Mat4x4 a, const Vec4 b)
 	{
 		return
 		{
@@ -126,19 +247,19 @@ namespace MyMath
 
 		return
 		{
-			2.0f / (far - near),	0.0f,					0.0f,					-(far + near) / (far - near),
-			0.0f,					2.0f / (left - right),	0.0f,					-(left + right) / (left - right),
+			2.0f / (right - left),	0.0f,					0.0f,					-(right + left) / (right - left),
+			0.0f,					2.0f / (far - near),	0.0f,					-(far + near) / (far - near),
 			0.0f,					0.0f,					2.0f / (top - bottom),	-(top + bottom) / (top - bottom),
 			0.0f,					0.0f,					0.0f,					1.0f
 		};
 	}
 
-	void PrintVec(const Vec4& v)
+	inline void PrintVec(const Vec4& v)
 	{
 		std::cout << "(" << std::to_string(v.x) << " ; " << std::to_string(v.y) << " ; " << std::to_string(v.z) << " ; " << std::to_string(v.w) << ")" << std::endl;
 	}
 
-	void PrintMat(const Mat4x4& m)
+	inline void PrintMat(const Mat4x4& m)
 	{
 		std::cout << "(\n" << std::to_string(m.m00) << " ; " << std::to_string(m.m01) << " ; " << std::to_string(m.m02) << " ; " << std::to_string(m.m03) << ";\n";
 		std::cout << std::to_string(m.m10) << " ; " << std::to_string(m.m11) << " ; " << std::to_string(m.m12) << " ; " << std::to_string(m.m13) << ";\n";
@@ -159,7 +280,7 @@ namespace MyMath
 
 	constexpr const Box BOX_UNIT = {};
 
-	inline Mat4x4 MatrixMultiplication(const Mat4x4 a, const Mat4x4 b)
+	constexpr inline Mat4x4 MatrixMultiplication(const Mat4x4 a, const Mat4x4 b)
 	{
 		return
 		{

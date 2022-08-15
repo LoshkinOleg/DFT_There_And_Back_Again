@@ -3,7 +3,7 @@
 #include <cassert>
 #include <random>
 
-void MyUtils::SumSignals(MyUtils::RealSignal& out, const MyUtils::RealSignal& other)
+void MyUtils::SumSignals(std::vector<float>& out, const std::vector<float>& other)
 {
 	assert(out.size() == other.size() && "Mismatching buffer sizes.");
 
@@ -14,19 +14,7 @@ void MyUtils::SumSignals(MyUtils::RealSignal& out, const MyUtils::RealSignal& ot
 	}
 }
 
-void MyUtils::InterleaveSignals(RealSignal& out, const RealSignal& first, const RealSignal& second)
-{
-	assert(out.size() == first.size() + second.size() && first.size() == second.size() && "Mismatching buffer sizes.");
-
-	const size_t len = first.size();
-	for (size_t i = 0; i < len; ++i)
-	{
-		out[2 * i] = first[i];
-		out[2 * i + 1] = second[i];
-	}
-}
-
-std::vector<float> MyUtils::SumSignals(const MyUtils::RealSignal& first, const MyUtils::RealSignal& second)
+std::vector<float> MyUtils::SumSignals(const std::vector<float>& first, const std::vector<float>& second)
 {
 	assert(first.size() == second.size() && "Mismatching buffer sizes.");
 
@@ -39,7 +27,19 @@ std::vector<float> MyUtils::SumSignals(const MyUtils::RealSignal& first, const M
 	return returnVal;
 }
 
-std::vector<float> MyUtils::WhiteNoise(const MyUtils::uint N, const size_t seed)
+void MyUtils::InterleaveSignals(std::vector<float>& out, const std::vector<float>& first, const std::vector<float>& second)
+{
+	assert(out.size() == first.size() + second.size() && first.size() == second.size() && "Mismatching buffer sizes.");
+
+	const size_t len = first.size();
+	for (size_t i = 0; i < len; ++i)
+	{
+		out[2 * i] = first[i];
+		out[2 * i + 1] = second[i];
+	}
+}
+
+std::vector<float> MyUtils::WhiteNoise(const unsigned int N, const size_t seed)
 {
 	static auto e = std::default_random_engine((unsigned int)seed);
 	static auto d = std::uniform_real_distribution<float>(-1.0f, 1.0f);
@@ -52,7 +52,7 @@ std::vector<float> MyUtils::WhiteNoise(const MyUtils::uint N, const size_t seed)
 	return returnVal;
 }
 
-std::vector<float> MyUtils::GaussianWhiteNoise(const MyUtils::uint N, const size_t seed)
+std::vector<float> MyUtils::GaussianWhiteNoise(const unsigned int N, const size_t seed)
 {
 	static auto e = std::default_random_engine((unsigned int)seed);
 	static auto d = std::normal_distribution<float>(0.0f, 1.0f);
@@ -65,7 +65,7 @@ std::vector<float> MyUtils::GaussianWhiteNoise(const MyUtils::uint N, const size
 	return returnVal;
 }
 
-void MyUtils::PadToNextPowerOfTwo(MyUtils::RealSignal& buffer)
+void MyUtils::PadToNextPowerOfTwo(std::vector<float>& buffer)
 {
 	const size_t currentSize = buffer.size();
 
@@ -85,7 +85,7 @@ void MyUtils::PadToNextPowerOfTwo(MyUtils::RealSignal& buffer)
 	buffer.insert(buffer.end(), nrOfNewElements, 0.0f);
 }
 
-void MyUtils::PadToNextPowerOfTwo(MyUtils::ComplexSignal& buffer)
+void MyUtils::PadToNextPowerOfTwo(std::vector<std::complex<float>>& buffer)
 {
 	const size_t currentSize = buffer.size();
 
@@ -105,7 +105,7 @@ void MyUtils::PadToNextPowerOfTwo(MyUtils::ComplexSignal& buffer)
 	buffer.insert(buffer.end(), nrOfNewElements, std::complex<float>(0.0f, 0.0f));
 }
 
-bool MyUtils::IsPowerOfTwo(const MyUtils::uint x)
+bool MyUtils::IsPowerOfTwo(const unsigned int x)
 {
 	// Taken from: https://stackoverflow.com/questions/108318/how-can-i-test-whether-a-number-is-a-power-of-2
 	return (x & (x - 1)) == 0;

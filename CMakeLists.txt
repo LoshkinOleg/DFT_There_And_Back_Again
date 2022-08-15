@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.14) # Define minimal CMake version.
-project(MyDFT_project) # Name the visual studio solution.
+project(DFT_tutorial_project) # Name the visual studio solution.
 
 # Set the C++20 as the C++ standard to use (ISO/IEC 14882).
 set (CMAKE_CXX_STANDARD 20)
@@ -23,24 +23,6 @@ target_include_directories(MyUtils # target_include_directories(<name> <keyword>
 # TODO: this doesn't work?
 set_target_properties(MyUtils PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build/MyUtils/lib") # set_target_properties(<name> PROPERTIES LIBRARY_OUTPUT_DIRECTORY <path>) defines where to put generated .lib files for a static library build.
 
-# Retrieve source and interface files for MyDFT library.
-file(GLOB_RECURSE MyDFT_include ${PROJECT_SOURCE_DIR}/MyDFT/include/*.h)
-file(GLOB_RECURSE MyDFT_src ${PROJECT_SOURCE_DIR}/MyDFT/src/*.cpp)
-
-# Define MyDFT static library. It'll hold generic DFT code.
-add_library(MyDFT STATIC ${MyDFT_include} ${MyDFT_src})
-# Adding MyFDT's dependancies.
-target_include_directories(MyDFT 
-	PRIVATE ${PROJECT_SOURCE_DIR}/MyDFT/include/
-	PRIVATE ${PROJECT_SOURCE_DIR}/thirdparty/Simple-FFT/include/ # Simple-FFT is a header-only FFT and IFFT library. Not as optimized as other more popular libraries but can be easily inspected, is simple and is easy to add to a project. The PRIVATE as <keyword> makes the directories specified in <path> visible only to MyDFT. This is what we want since we don't want anything that depends on MyDFT to be aware of implementation details (Simple-FFT is only used in MyDFT.cpp).
-	PRIVATE ${PROJECT_SOURCE_DIR}/MyUtils/include/ # Include MyUtils interface to be able to use it.
-	)
-target_link_libraries(MyDFT PRIVATE # target_link_libraries(<target> <keyword> <build type> <other target or .libs>) links <target> with it's dependancies. <build type> can either be "general", "debug" and "optimized" and can be used to specify different libs for different build types. PRIVATE is used here since only the implementation of MyDFT will depend on MyUtils, not the interface.
-	general MyUtils # Linking with MyUtils with "general" prefix since we only defined one type of MyDFT target anyways.
-	)
-# Define output paths for the compiler.
-set_target_properties(MyDFT PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}/build/MyDFT/lib")
-
 # Define Application executable.
 file(GLOB_RECURSE Application_include ${PROJECT_SOURCE_DIR}/Application/include/*.h) # Retrieve source and interface files for the Application target.
 file(GLOB_RECURSE Application_src ${PROJECT_SOURCE_DIR}/Application/src/*.cpp)
@@ -55,7 +37,6 @@ source_group("thirdparty" FILES ${thirdparty_imgui_include} ${thirdparty_imgui_s
 # Add the rest of dependancies of Application.
 target_include_directories(Application PRIVATE # Privately add external interface directories.
 	${PROJECT_SOURCE_DIR}/MyUtils/include/ # Our own utility static library.
-	${PROJECT_SOURCE_DIR}/MyDFT/include/ # Our own DFT static library.
 	${PROJECT_SOURCE_DIR}/Application/include/ # Target's own interface.
 	${PROJECT_SOURCE_DIR}/thirdparty/imgui/include/ # Imgui interface.
 	${PROJECT_SOURCE_DIR}/thirdparty/dr_wav/include/ # Header-only library for reading and writing .wav files.
@@ -64,7 +45,6 @@ target_include_directories(Application PRIVATE # Privately add external interfac
 	${PROJECT_SOURCE_DIR}/thirdparty/sdl/include/ # Open-source cross-platform library for developing PC applications, popular for C++ game development. Can interface with graphics API like OpenGL or Vulkan with some extra set-up if needed.
 	)
 target_link_libraries(Application PRIVATE # PRIVATE is used as <keyword> here since Application is an executable, nothing will depend on it.
-	general MyDFT # Linking with MyDFT with "general" prefix since we only defined one type of MyDFT target anyways.
 	general MyUtils # Linking with MyUtils with "general" prefix since we only defined one type of MyUtils target anyways.
 	general ${PROJECT_SOURCE_DIR}/thirdparty/easy_profiler/lib/easy_profiler.lib # Linking against the .lib of the easy_profiler dynamic library. This means that the pre-compiled "easy_profiler.dll" will need to be placed besides the Application.exe .
 	general ${PROJECT_SOURCE_DIR}/thirdparty/portaudio/lib/portaudio_static_x64.lib # Linking against the portaudio static library.

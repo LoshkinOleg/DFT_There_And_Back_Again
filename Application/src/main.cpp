@@ -1,20 +1,25 @@
 #include <Application.h>
 
-#include <string>
-#include <cassert>
 #include <iostream>
-#include <array>
 #include <algorithm>
-
-// #include "MyDFT.h"
-#include "MyMath.h"
-
-// https://www.youtube.com/watch?v=ITnPS8HGqLo
-// https://www.youtube.com/watch?v=spUNpyF58BY
 
 // TODO: use mathematical convention for cartesian coordinates.
 
-enum class Waveform: int
+// Literals to configure the demo.
+static constexpr const size_t SINE_SAMPLE_RATE = 8000; // Length of the signals. Corresponds to N (for time-domain signals) and K (for frequency-domain signals).
+static constexpr const size_t SINE_FREQ = 440; // ISO standard "La" or "A".
+static constexpr const float ANGLE_IN_RADS = -0.5f * MyMath::PI; // Clockwise 90° rotation.
+static constexpr const float SYNTHESIZED_COMPLEX_MAGNITUDE = SINE_SAMPLE_RATE * 0.5f; // Magnitude that a frequency bin should have to rebuild the generated 440 Hz pure tone. The 1/2 factor is here because the spectrum should contain a peak at 440 Hz and 8000-440 Hz.
+
+// The signals to render.
+static std::vector<float> generatedTimeDomain(SINE_SAMPLE_RATE, 0.0f); // Pure 440 Hz tone generated via code.
+static std::vector<std::complex<float>> generatedFreqDomain(SINE_SAMPLE_RATE, 0.0f); // Fourier transform of the same tone.
+static std::vector<float> generatedTimeDomainFromDFT(SINE_SAMPLE_RATE, 0.0f); // The pure 440 Hz tone reconstructed from the fourier transform of the pure 440 Hz tone.
+static std::vector<float> synthesizedTimeDomainFromDFT(SINE_SAMPLE_RATE, 0.0f); // Manually constructed fourier transform. We'll be synthesizing the 440 Hz pure tone with it.
+static std::vector<std::complex<float>> synthesizedFreqDomain(SINE_SAMPLE_RATE, 0.0f); // Tone reconstructed from the manually constructed fourier transform.
+
+// Defines which waveforms to render.
+enum class Waveform : int
 {
 	Generated = 0,
 	GeneratedFreqDomain,
@@ -24,7 +29,7 @@ enum class Waveform: int
 	SynthesizedFromDFT
 };
 
-enum class SoundToPlay: int
+enum class SoundToPlay : int
 {
 	None = 0,
 
@@ -33,35 +38,8 @@ enum class SoundToPlay: int
 
 	Synthesized
 };
-
-static constexpr const MyMath::Box BOUNDS{-2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f}; // Bounds of the space in which objects are rendered.
-static constexpr const MyMath::Mat4x4 ORTHO_PROJ_MAT = MyMath::OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top); // Projection matrix used.
-static constexpr const size_t SINE_SAMPLE_RATE = 8000; // Length of the signals. Corresponds to N (for time-domain signals) and K (for frequency-domain signals).
-static constexpr const size_t SINE_FREQ = 440; // ISO standard "La" or "A".
-static constexpr const float ANGLE_IN_RADS = -0.5f * MyMath::PI; // Clockwise 90° rotation.
-static constexpr const float SYNTHESIZED_COMPLEX_MAGNITUDE = SINE_SAMPLE_RATE * 0.5f; // Magnitude that a frequency bin should have to rebuild the generated 440 Hz pure tone. The 1/2 factor is here because the spectrum should contain a peak at 440 Hz and 8000-440 Hz.
-static const std::array<float, 5> offsets = {0.0f, 0.01f, 0.02f, 0.03f, 0.04f}; // Small offsets to be able to distinguish between overlapping signals. Has to be static const, not a constexpr const because the values are passed to lambdas.
-static const std::array<MyApp::ColorBytes, 5> colors = {{ {255, 0,0,255}, {0,255,0,255}, {0,0,255,255}, {255,255,0,255}, {255,0,255,255} }}; // Color differences to differenciate between signals. Idem.
-
-// Graphical rendering structures.
-static MyMath::Mat4x4 objectRotation = MyMath::MAT4_IDENTITY; // Holds rotation of the model. Used to rotate waveforms around local Z.
-static MyMath::Mat4x4 objectTranslation = MyMath::MAT4_IDENTITY; // Holds position of the model. Used to offset the waveforms on local Z.
-static MyMath::Mat4x4 viewMatrix = MyMath::MAT4_IDENTITY; // Holds camera rotation. Used to rotate waveforms around world's Y.
-static float accumulatedYaw = 0.0f; // Controlled with left mouse button. Allows you to rotate the signal around.
-static float accumulatedPitch = 0.0f; // Controlled with left mouse button. Allows you to pitch the signal towards and away from camera.
-static float samplesSpacing = 1.0f; // Controlled with right mouse button. Allows you to zoom into the signal.
-static float accumulatedZoffset = 0.0f; // Controlled with scroll wheel. Allows you to scroll through the signal.
-
-// Defines which waveforms to render.
-static SoundToPlay toPlay = SoundToPlay::None;
-static std::vector<Waveform> toDisplay = {};
-
-// The signals to render.
-static std::vector<float> generatedTimeDomain(SINE_SAMPLE_RATE, 0.0f); // Pure 440 Hz tone generated via code.
-static std::vector<std::complex<float>> generatedFreqDomain(SINE_SAMPLE_RATE, 0.0f); // Fourier transform of the same tone.
-static std::vector<float> generatedTimeDomainFromDFT(SINE_SAMPLE_RATE, 0.0f); // The pure 440 Hz tone reconstructed from the fourier transform of the pure 440 Hz tone.
-static std::vector<float> synthesizedTimeDomainFromDFT(SINE_SAMPLE_RATE, 0.0f); // Manually constructed fourier transform. We'll be synthesizing the 440 Hz pure tone with it.
-static std::vector<std::complex<float>> synthesizedFreqDomain(SINE_SAMPLE_RATE, 0.0f); // Tone reconstructed from the manually constructed fourier transform.
+SoundToPlay toPlay = SoundToPlay::None;
+std::vector<Waveform> toDisplay = {};
 
 /**
 * Implementation of euler's identity e^(i*x) = cos(x) + i*sin(x)
@@ -72,7 +50,7 @@ std::complex<float> EulersFormula(const float x)
 }
 
 /**
-* Discrete Fourier Transform. Computes the frequency-domain representation of a time-domain signal.
+* Discrete Fourier Transform. Computes the frequency-domain representation of a time-domain signal. For more information about the DFT, see https://www.youtube.com/watch?v=ITnPS8HGqLo and https://www.youtube.com/watch?v=spUNpyF58BY
 *
 * @param out Output of the function, the frequency bins resulting from the DFT. Ensure out.size() is K before calling this function.
 * @param x Input real-valued signal. x.size() defines N.
@@ -159,245 +137,19 @@ void IDFT(std::vector<float>& out, const std::vector<std::complex<float>>& y, co
 * @param frequency The desired tone, in Hertz.
 * @return Value of the signal at sample index n.
 */
-inline float GenerateSine(const float n, const float sampleRate, const float frequency)
+float GenerateSine(const float n, const float sampleRate, const float frequency)
 {
 	// 2*PI is a full rotation. n/sampleRate ensures that the full rotation happens at 1 Hz. frequency then changes the pitch of this "unit pitch".
 	return std::sinf((2.0f * MyMath::PI * n / sampleRate) * frequency);
 }
 
 /**
-* Rotates the waveform.
-* 
-* @param relx Screenspace x movement of the mouse.
-* @param rely Screenspace y movement of the mouse.
-*/
-inline void ProcessLMB(const float relx, const float rely)
-{
-	constexpr const float RIGHT_ANGLE = MyMath::PI * 0.5f;
-	accumulatedYaw += relx;
-	accumulatedPitch -= rely;
-	// Rotate signal model about the Z axis.
-	objectRotation = MatrixMultiplication(MyMath::MAT4_IDENTITY, MyMath::RotationMatrix(MyMath::VEC3_UP, RIGHT_ANGLE * accumulatedYaw));
-	// Pitch the camera up / down. Pitching the camera rather than the model ensures that the percieved pitching of the model is always done towards / away from the camera.
-	viewMatrix = MatrixMultiplication(MyMath::MAT4_IDENTITY, MyMath::RotationMatrix(MyMath::VEC3_LEFT, RIGHT_ANGLE * accumulatedPitch));
-}
-
-/**
-* Scales the waveform by spacing out the samples on the Z axis.
-* 
-* @param relx Screenspace x movement of the mouse.
-* @param rely Screenspace y movement of the mouse. Unused.
-*/
-inline void ProcessRMB(const float relx, const float rely)
-{
-	(void)rely; // rely is unused.
-	samplesSpacing += relx;
-	if(samplesSpacing <= 0.0f) samplesSpacing = 0.01f; // To prevent reversing the signal, which looks weird.
-}
-
-/**
-* Scrolls through the signal by applying a Z offset on the waveform's model.
-* 
-* @param relx Horizontal scrolling, if any. Most mice don't have a horizontal scroll wheel. Unused.
-* @param relx Vertical scrolling.
-*/
-inline void ProcessScrollWheel(const float relx, const float rely)
-{
-	(void)relx; // relx is unused.
-	objectTranslation.m23 -= rely;
-}
-
-/**
-* Resets all model and camera transformations. Useful when you've lost view of the signal.
-*/
-inline void ResetTransformations()
-{
-	accumulatedYaw = 0.0f;
-	accumulatedPitch = 0.0f;
-	samplesSpacing = 1.0f;
-	objectRotation = {};
-	objectTranslation = {};
-	viewMatrix = {};
-}
-
-/**
-* Draws the signal as a series of lines in 3D space where X = 1, Y = i and Z = frequency.
-* 
-* @param signal The complex-valued signal to be drawn.
-* @param sdl The SdlManager to be used to draw the lines.
-* @param color The color of the lines. Useful for distinguishing between multiple signals on screen.
-* @param offset The global offset on the Z axis of the lines. Useful for distinguishing between multiple signals on screen.
-*/
-inline void RenderFrequencyDomainSignal(const std::vector<std::complex<float>>& signal, MyApp::SdlManager& sdl, const MyApp::ColorBytes color, const float& offset)
-{
-	// Compute scaling factor so that the element with the biggest value fits on screen.
-	float biggestComponent = -1.0f;
-	for(const auto& complex : signal)
-	{
-		if(std::fabs(complex.real()) > biggestComponent) biggestComponent = std::fabs(complex.real());
-		if(std::fabs(complex.imag()) > biggestComponent) biggestComponent = std::fabs(complex.imag());
-	}
-	const float amplitudeScale = 1.0f / biggestComponent;
-
-	// Offset the samples on the Z axis.
-	MyMath::Mat4x4 translationWithOffset = objectTranslation;
-	translationWithOffset.m23 += offset;
-
-	const float halfDisplaySize = sdl.displaySize * 0.5f;
-	// Draw each frequency bin as a line.
-	for(size_t n = 0; n < signal.size(); n++)
-	{
-		// Single vertices. No model transformation since it's assumed to be an identity matrix.
-		MyMath::Vec4 pt0, pt1; // World / model position.
-		const float zPos = float(n) / float(signal.size());
-		pt0 = {0.0f,								0.0f,								samplesSpacing * zPos, 1.0f}; // XY center of the signal.
-		pt1 = {signal[n].real() * amplitudeScale,	signal[n].imag() * amplitudeScale,	samplesSpacing * zPos, 1.0f}; // Position of the sample.
-
-		// World / model space transformations.
-		// Rotate rotate around Z.
-		pt0 = MatrixVectorMultiplication(objectRotation, pt0);
-		pt1 = MatrixVectorMultiplication(objectRotation, pt1);
-		// Offset on Z.
-		pt0 = MatrixVectorMultiplication(translationWithOffset, pt0);
-		pt1 = MatrixVectorMultiplication(translationWithOffset, pt1);
-
-		// To view space.
-		pt0 = MatrixVectorMultiplication(viewMatrix, pt0);
-		pt1 = MatrixVectorMultiplication(viewMatrix, pt1);
-
-		// Cull points outside the viewing volume.
-		if(pt0.x < BOUNDS.back		|| pt0.x > BOUNDS.front	||
-		   pt0.y < BOUNDS.right		|| pt0.y > BOUNDS.left	||
-		   pt0.z < BOUNDS.bottom	|| pt0.z > BOUNDS.top)	continue;
-		if(pt1.x < BOUNDS.back		|| pt1.x > BOUNDS.front	||
-		   pt1.y < BOUNDS.right		|| pt1.y > BOUNDS.left	||
-		   pt1.z < BOUNDS.bottom	|| pt1.z > BOUNDS.top)	continue;
-
-		// To clip space.
-		pt0 = MatrixVectorMultiplication(ORTHO_PROJ_MAT, pt0);
-		pt1 = MatrixVectorMultiplication(ORTHO_PROJ_MAT, pt1);
-
-		assert(pt0.x >= -1.0f && pt0.x <= 1.0f &&
-			   pt0.y >= -1.0f && pt0.y <= 1.0f &&
-			   pt0.z >= -1.0f && pt0.z <= 1.0f && "Normalized device coordinate lies outside the normal range.");
-		assert(pt1.x >= -1.0f && pt1.x <= 1.0f &&
-			   pt1.y >= -1.0f && pt1.y <= 1.0f &&
-			   pt1.z >= -1.0f && pt1.z <= 1.0f && "Normalized device coordinate lies outside the normal range.");
-
-		// To screen space following "Viewport transform" section of: https://www.khronos.org/opengl/wiki/Viewport_Transform note: adjusted to fit SDL's coordinate convention.
-		const MyMath::Vec2 windowPt0 =
-		{
-								 halfDisplaySize * -pt0.y + halfDisplaySize,
-			sdl.displaySize -	(halfDisplaySize *  pt0.z + halfDisplaySize)
-			// Depth (x component) is discarded, we don't need it. No perspective divide since we're using orthogonal projection.
-		};
-		const MyMath::Vec2 windowPt1 =
-		{
-								 halfDisplaySize * -pt1.y + halfDisplaySize,
-			sdl.displaySize -	(halfDisplaySize *  pt1.z + halfDisplaySize)
-		};
-		assert(windowPt0.x >= 0.0f && windowPt0.x <= sdl.displaySize &&
-			   windowPt0.y >= 0.0f && windowPt0.y <= sdl.displaySize && "Window point lies outside the screen's bounds.");
-		assert(windowPt1.x >= 0.0f && windowPt1.x <= sdl.displaySize &&
-			   windowPt1.y >= 0.0f && windowPt1.y <= sdl.displaySize && "Window point lies outside the screen's bounds.");
-
-		// Draw the line representing this sample.
-		sdl.RenderLine(windowPt0.x, windowPt0.y, windowPt1.x, windowPt1.y, color);
-	}
-}
-
-/**
-* Draws the signal as a series of lines in 3D space where X = 1, Y = i and Z = time.
-*
-* @param signal The real-valued signal to be drawn.
-* @param sdl The SdlManager to be used to draw the lines.
-* @param color The color of the lines. Useful for distinguishing between multiple signals on screen.
-* @param offset The global offset on the Z axis of the lines. Useful for distinguishing between multiple signals on screen.
-*/
-inline void RenderTimeDomainSignal(const std::vector<float>& signal, MyApp::SdlManager& sdl, const MyApp::ColorBytes color, const float offset)
-{
-	// Compute scaling factor so that the element with the biggest value fits on screen.
-	float biggestComponent = -1.0f;
-	for(const auto& amplitude : signal)
-	{
-		if(std::fabs(amplitude) > biggestComponent) biggestComponent = std::fabs(amplitude);
-	}
-	const float amplitudeScale = 1.0f / biggestComponent;
-
-	// Offset the samples on the Z axis.
-	MyMath::Mat4x4 translationWithOffset = objectTranslation;
-	translationWithOffset.m23 += offset;
-
-	// Draw each sample as a line.
-	const float halfDisplaySize = sdl.displaySize * 0.5f;
-	for(size_t n = 0; n < signal.size(); n++)
-	{
-		// Single vertices. No model transformation since it's assumed to be an identity matrix.
-		MyMath::Vec4 pt0, pt1; // World / model position.
-		const float zPos = float(n) / float(signal.size());
-		pt0 = {0.0f,						0.0f,	samplesSpacing * zPos, 1.0f}; // XY center of the signal.
-		pt1 = {amplitudeScale * signal[n],	0.0f,	samplesSpacing * zPos, 1.0f}; // Position of the sample.
-
-		// World / model space transformations.
-		// Rotate rotate around Z.
-		pt0 = MatrixVectorMultiplication(objectRotation, pt0);
-		pt1 = MatrixVectorMultiplication(objectRotation, pt1);
-		// Offset on Z.
-		pt0 = MatrixVectorMultiplication(translationWithOffset, pt0);
-		pt1 = MatrixVectorMultiplication(translationWithOffset, pt1);
-
-		// To view space.
-		pt0 = MatrixVectorMultiplication(viewMatrix, pt0);
-		pt1 = MatrixVectorMultiplication(viewMatrix, pt1);
-
-		// Cull points outside the viewing volume.
-		if(pt0.x < BOUNDS.back		|| pt0.x > BOUNDS.front	||
-		   pt0.y < BOUNDS.right		|| pt0.y > BOUNDS.left	||
-		   pt0.z < BOUNDS.bottom	|| pt0.z > BOUNDS.top)	continue;
-		if(pt1.x < BOUNDS.back		|| pt1.x > BOUNDS.front ||
-		   pt1.y < BOUNDS.right		|| pt1.y > BOUNDS.left	||
-		   pt1.z < BOUNDS.bottom	|| pt1.z > BOUNDS.top)	continue;
-
-		// To clip space.
-		pt0 = MatrixVectorMultiplication(ORTHO_PROJ_MAT, pt0);
-		pt1 = MatrixVectorMultiplication(ORTHO_PROJ_MAT, pt1);
-
-		assert(pt0.x >= -1.0f && pt0.x <= 1.0f &&
-			   pt0.y >= -1.0f && pt0.y <= 1.0f &&
-			   pt0.z >= -1.0f && pt0.z <= 1.0f && "Normalized device coordinate lies outside the normal range.");
-		assert(pt1.x >= -1.0f && pt1.x <= 1.0f &&
-			   pt1.y >= -1.0f && pt1.y <= 1.0f &&
-			   pt1.z >= -1.0f && pt1.z <= 1.0f && "Normalized device coordinate lies outside the normal range.");
-
-		// To screen space following "Viewport transform" section of: https://www.khronos.org/opengl/wiki/Viewport_Transform note: adjusted to fit SDL's coordinate convention.
-		const MyMath::Vec2 windowPt0 =
-		{
-								 halfDisplaySize * -pt0.y + halfDisplaySize,
-			sdl.displaySize -	(halfDisplaySize *  pt0.z + halfDisplaySize)
-			// Depth (x component) is discarded, we don't need it. No perspective divide since we're using orthogonal projection.
-		};
-		const MyMath::Vec2 windowPt1 =
-		{
-								 halfDisplaySize * -pt1.y + halfDisplaySize,
-			sdl.displaySize -	(halfDisplaySize *  pt1.z + halfDisplaySize)
-		};
-		assert(windowPt0.x >= 0.0f && windowPt0.x <= sdl.displaySize &&
-			   windowPt0.y >= 0.0f && windowPt0.y <= sdl.displaySize && "Window point lies outside the screen's bounds.");
-		assert(windowPt1.x >= 0.0f && windowPt1.x <= sdl.displaySize &&
-			   windowPt1.y >= 0.0f && windowPt1.y <= sdl.displaySize && "Window point lies outside the screen's bounds.");
-
-		// Draw the line representing this sample.
-		sdl.RenderLine(windowPt0.x, windowPt0.y, windowPt1.x, windowPt1.y, color);
-	}
-}
-
-/**
 * Displays an ImGui window to interact with the application. Shows the controls, allows to switch between signals played back and allows to show/hide the visualizations of different signals.
 */
-inline void RenderImgui()
+void Callback_RenderImgui_()
 {
-	constexpr const char* soundNames[4] = {"NONE", "Generated sine", "Generated sine reconstructed from it's DFT", "Sine synthesized from constructed DFT"};
-	static std::array<bool, 5> whetherToDisplay({false, false, false, false, false});
+	constexpr const char* soundNames[4] = { "NONE", "Generated sine", "Generated sine reconstructed from it's DFT", "Sine synthesized from constructed DFT" };
+	static std::array<bool, 5> whetherToDisplay({ false, false, false, false, false });
 
 	// Draw the UI.
 	ImGui::Begin("Controls", 0, ImGuiWindowFlags_AlwaysAutoResize);
@@ -416,12 +168,12 @@ inline void RenderImgui()
 	ImGui::End();
 
 	// Update container that defines what signals to draw.
-	if(updateDisplayedWaveform)
+	if (updateDisplayedWaveform)
 	{
 		toDisplay.resize(0);
-		for(int i = 0; i < (int)whetherToDisplay.size(); i++)
+		for (int i = 0; i < (int)whetherToDisplay.size(); i++)
 		{
-			if(whetherToDisplay[i]) toDisplay.push_back((Waveform)i);
+			if (whetherToDisplay[i]) toDisplay.push_back((Waveform)i);
 		}
 	}
 }
@@ -465,26 +217,26 @@ void MyApp::Application::OnStart()
 	// Register callbacks.
 	sdl_.RegisterImguiCallback([&]()
 	{
-		RenderImgui();
+		Callback_RenderImgui_();
 	});
 	sdl_.RegisterMouseInputCallback(MyApp::Input::LEFT_MOUSE_BUTTON, [&](const float x, const float y)
 	{
 		constexpr const float MOUSE_SENSITIVITY = 0.001f;
-		ProcessLMB(x * MOUSE_SENSITIVITY, y * MOUSE_SENSITIVITY);
+		Callback_ProcessLMB_(x * MOUSE_SENSITIVITY, y * MOUSE_SENSITIVITY);
 	});
 	sdl_.RegisterMouseInputCallback(MyApp::Input::RIGHT_MOUSE_BUTTON, [&](const float x, const float y)
 	{
 		constexpr const float WHEEL_SENSITIVITY = 1.0f;
-		ProcessRMB(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY);
+		Callback_ProcessRMB_(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY);
 	});
 	sdl_.RegisterMouseInputCallback(MyApp::Input::SCROLL_WHEEL, [&](const float x, const float y)
 	{
 		constexpr const float WHEEL_SENSITIVITY = 0.1f;
-		ProcessScrollWheel(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY);
+		Callback_ProcessScrollWheel_(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY);
 	});
 	sdl_.RegisterInputCallback(MyApp::Input::R, [&]()
 	{
-		ResetTransformations();
+		Callback_ResetTransformations_();
 	});
 }
 
@@ -540,27 +292,27 @@ void MyApp::Application::OnUpdate()
 				{
 					case Waveform::Generated:
 					{
-						RenderTimeDomainSignal(generatedTimeDomain, sdl_, colors[i], offsets[i]);
+						Callback_RenderTimeDomainSignal_(generatedTimeDomain, colors_[i], offsets_[i]);
 					}break;
 
 					case Waveform::GeneratedFreqDomain:
 					{
-						RenderFrequencyDomainSignal(generatedFreqDomain, sdl_, colors[i], offsets[i]);
+						Callback_RenderFrequencyDomainSignal_(generatedFreqDomain, colors_[i], offsets_[i]);
 					}break;
 
 					case Waveform::GeneratedFromDFT:
 					{
-						RenderTimeDomainSignal(generatedTimeDomainFromDFT, sdl_, colors[i], offsets[i]);
+						Callback_RenderTimeDomainSignal_(generatedTimeDomainFromDFT, colors_[i], offsets_[i]);
 					}break;
 
 					case Waveform::SynthesizedFreqDomain:
 					{
-						RenderFrequencyDomainSignal(synthesizedFreqDomain, sdl_, colors[i], offsets[i]);
+						Callback_RenderFrequencyDomainSignal_(synthesizedFreqDomain, colors_[i], offsets_[i]);
 					}break;
 
 					case Waveform::SynthesizedFromDFT:
 					{
-						RenderTimeDomainSignal(synthesizedTimeDomainFromDFT, sdl_, colors[i], offsets[i]);
+						Callback_RenderTimeDomainSignal_(synthesizedTimeDomainFromDFT, colors_[i], offsets_[i]);
 					}break;
 
 					default:

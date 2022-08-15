@@ -120,13 +120,13 @@ void MyApp::Application::Callback_RenderFrequencyDomainSignal_(const std::vector
 		// To screen space following "Viewport transform" section of: https://www.khronos.org/opengl/wiki/Viewport_Transform note: adjusted to fit SDL's coordinate convention.
 		const MyMath::Vec2 windowPt0 =
 		{
-								 halfDisplaySize * -pt0.y + halfDisplaySize,
+								 halfDisplaySize * pt0.x + halfDisplaySize,
 			sdl_.displaySize - (halfDisplaySize * pt0.z + halfDisplaySize)
 			// Depth (x component) is discarded, we don't need it. No perspective divide since we're using orthogonal projection.
 		};
 		const MyMath::Vec2 windowPt1 =
 		{
-								 halfDisplaySize * -pt1.y + halfDisplaySize,
+								 halfDisplaySize * pt1.x + halfDisplaySize,
 			sdl_.displaySize - (halfDisplaySize * pt1.z + halfDisplaySize)
 		};
 		assert(windowPt0.x >= 0.0f && windowPt0.x <= sdl_.displaySize &&
@@ -164,10 +164,10 @@ void MyApp::Application::Callback_RenderTimeDomainSignal_(const std::vector<floa
 		pt1 = { amplitudeScale * signal[n],	0.0f,	samplesSpacing_ * zPos, 1.0f }; // Position of the sample.
 
 		// World / model space transformations.
-		// Rotate rotate around Z.
+		// // Rotate rotate around Z.
 		pt0 = MatrixVectorMultiplication(modelRotation_, pt0);
 		pt1 = MatrixVectorMultiplication(modelRotation_, pt1);
-		// Offset on Z.
+		// // Offset on Z.
 		pt0 = MatrixVectorMultiplication(translationWithOffset, pt0);
 		pt1 = MatrixVectorMultiplication(translationWithOffset, pt1);
 
@@ -197,13 +197,13 @@ void MyApp::Application::Callback_RenderTimeDomainSignal_(const std::vector<floa
 		// To screen space following "Viewport transform" section of: https://www.khronos.org/opengl/wiki/Viewport_Transform note: adjusted to fit SDL's coordinate convention.
 		const MyMath::Vec2 windowPt0 =
 		{
-								 halfDisplaySize * -pt0.y + halfDisplaySize,
+								 halfDisplaySize * pt0.x + halfDisplaySize,
 			sdl_.displaySize - (halfDisplaySize * pt0.z + halfDisplaySize)
 			// Depth (x component) is discarded, we don't need it. No perspective divide since we're using orthogonal projection.
 		};
 		const MyMath::Vec2 windowPt1 =
 		{
-								 halfDisplaySize * -pt1.y + halfDisplaySize,
+								 halfDisplaySize * pt1.x + halfDisplaySize,
 			sdl_.displaySize - (halfDisplaySize * pt1.z + halfDisplaySize)
 		};
 		assert(windowPt0.x >= 0.0f && windowPt0.x <= sdl_.displaySize &&

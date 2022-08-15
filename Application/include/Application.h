@@ -14,6 +14,27 @@ namespace MyApp
 	{
 	public:
 
+		// Defines which waveforms to render.
+		enum class Waveform : int
+		{
+			Generated = 0,
+			GeneratedFreqDomain,
+			GeneratedFromDFT,
+
+			SynthesizedFreqDomain,
+			SynthesizedFromDFT
+		};
+
+		enum class SoundToPlay : int
+		{
+			None = 0,
+
+			Generated,
+			GeneratedFromDFT,
+
+			Synthesized
+		};
+
 		Application() = delete;
 		Application(const unsigned int displaySize, const unsigned int sampleRate, const unsigned int bufferSize);
 
@@ -22,8 +43,11 @@ namespace MyApp
 		void OnUpdate();
 		void OnShutdown();
 
-		void Run();
+		void Run(const std::vector<float>& generatedTimeDomain, const std::vector<float>& generatedTimeDomainFromDFT, const std::vector<float>& synthesizedTimeDomainFromDFT,
+			const std::vector<std::complex<float>>& generatedFreqDomain, const std::vector<std::complex<float>>& synthesizedFreqDomain);
 
+		SoundToPlay toPlay = SoundToPlay::None;
+		std::vector<Waveform> toDisplay = {};
 	private:
 		/**
 		* Rotates the waveform.
@@ -73,6 +97,17 @@ namespace MyApp
 		* @param offset The global offset on the Z axis of the lines. Useful for distinguishing between multiple signals on screen.
 		*/
 		void Callback_RenderTimeDomainSignal_(const std::vector<float>& signal, const MyApp::ColorBytes color, const float offset);
+
+		/**
+		* Displays an ImGui window to interact with the application. Shows the controls, allows to switch between signals played back and allows to show/hide the visualizations of different signals.
+		*/
+		void Callback_RenderImgui_();
+
+		/**
+		* Updates which waveforms to display and which sound to play.
+		*/
+		void UpdateToDisplayAndToPlay_(const std::vector<float>& generatedTimeDomain, const std::vector<float>& generatedTimeDomainFromDFT, const std::vector<float>& synthesizedTimeDomainFromDFT,
+			const std::vector<std::complex<float>>& generatedFreqDomain, const std::vector<std::complex<float>>& synthesizedFreqDomain);
 
 	private:
 		SdlManager sdl_;

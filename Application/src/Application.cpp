@@ -4,11 +4,51 @@
 
 MyApp::Application::Application(const unsigned int displaySize, const unsigned int sampleRate, const unsigned int bufferSize): sdl_(SdlManager(displaySize)), audioEngine_(AudioEngine(sampleRate, bufferSize)) {}
 
-void MyApp::Application::Run()
+void MyApp::Application::Run(const std::vector<float>& generatedTimeDomain, const std::vector<float>& generatedTimeDomainFromDFT, const std::vector<float>& synthesizedTimeDomainFromDFT,
+	const std::vector<std::complex<float>>& generatedFreqDomain, const std::vector<std::complex<float>>& synthesizedFreqDomain)
 {
 	EASY_PROFILER_ENABLE;
 
+	// Register callbacks.
+	sdl_.RegisterImguiCallback([&]()
+		{
+			Callback_RenderImgui_();
+		});
+	sdl_.RegisterMouseInputCallback(MyApp::Input::LEFT_MOUSE_BUTTON, [&](const float x, const float y)
+		{
+			constexpr const float MOUSE_SENSITIVITY = 0.001f;
+			Callback_ProcessLMB_(x * MOUSE_SENSITIVITY, y * MOUSE_SENSITIVITY);
+		});
+	sdl_.RegisterMouseInputCallback(MyApp::Input::RIGHT_MOUSE_BUTTON, [&](const float x, const float y)
+		{
+			constexpr const float WHEEL_SENSITIVITY = 1.0f;
+			Callback_ProcessRMB_(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY);
+		});
+	sdl_.RegisterMouseInputCallback(MyApp::Input::SCROLL_WHEEL, [&](const float x, const float y)
+		{
+			constexpr const float WHEEL_SENSITIVITY = 0.1f;
+			Callback_ProcessScrollWheel_(x * WHEEL_SENSITIVITY, y * WHEEL_SENSITIVITY);
+		});
+	sdl_.RegisterInputCallback(MyApp::Input::R, [&]()
+		{
+			Callback_ResetTransformations_();
+		});
+
 	OnStart();
+
+	// Write time-domain signals to disk. Useful for checking if the audio artifacts come from the signal itself or from the hardware's processing.
+	if (!assetManager_.WriteWav(generatedTimeDomain, (std::string(APPLICATION_WAV_OUTPUTS_DIR) + "generated.wav").c_str(), 1, generatedTimeDomain.size()))
+	{
+		throw std::runtime_error(std::string("Couldn't write wav to file."));
+	}
+	if (!assetManager_.WriteWav(generatedTimeDomainFromDFT, (std::string(APPLICATION_WAV_OUTPUTS_DIR) + "generatedFromDFT.wav").c_str(), 1, generatedTimeDomainFromDFT.size()))
+	{
+		throw std::runtime_error(std::string("Couldn't write wav to file."));
+	};
+	if (!assetManager_.WriteWav(synthesizedTimeDomainFromDFT, (std::string(APPLICATION_WAV_OUTPUTS_DIR) + "synthesizedFromDFT.wav").c_str(), 1, synthesizedTimeDomainFromDFT.size()))
+	{
+		throw std::runtime_error(std::string("Couldn't write wav to file."));
+	};
 
 	bool shutdown = false;
 	while (!shutdown)
@@ -17,6 +57,7 @@ void MyApp::Application::Run()
 		shutdown = sdl_.Update();
 		audioEngine_.ProcessAudio();
 		OnUpdate();
+		UpdateToDisplayAndToPlay_(generatedTimeDomain, generatedTimeDomainFromDFT, synthesizedTimeDomainFromDFT, generatedFreqDomain, synthesizedFreqDomain);
 	}
 
 	OnShutdown();
@@ -214,4 +255,118 @@ void MyApp::Application::Callback_RenderTimeDomainSignal_(const std::vector<floa
 		// Draw the line representing this sample.
 		sdl_.RenderLine(windowPt0.x, windowPt0.y, windowPt1.x, windowPt1.y, color);
 	}
+}
+
+void MyApp::Application::Callback_RenderImgui_()
+{
+	constexpr const char* soundNames[4] = { "NONE", "Generated sine", "Generated sine reconstructed from it's DFT", "Sine synthesized from constructed DFT" };
+	static std::array<bool, 5> whetherToDisplay({ false, false, false, false, false });
+
+	// Draw the UI.
+	ImGui::Begin("Controls", 0, ImGuiWindowFlags_AlwaysAutoResize);
+
+	ImGui::Text("Left mouse button: rotate, right mouse button: scale,\nmouse wheel: scroll through the signal, R: reset the view.\n");
+
+	ImGui::ListBox("Sound to play", (int*)&toPlay, soundNames, 4);
+
+	bool updateDisplayedWaveform = false;
+	updateDisplayedWaveform = ImGui::Checkbox("Show Generated in time-domain: ", &(whetherToDisplay[0])) ? true : updateDisplayedWaveform; // Set updateDisplayedWaveform to true only if there was a change.
+	updateDisplayedWaveform = ImGui::Checkbox("Show Generated in frequency-domain: ", &(whetherToDisplay[1])) ? true : updateDisplayedWaveform;
+	updateDisplayedWaveform = ImGui::Checkbox("Show reconstructed Generated in frequency-domain: ", &(whetherToDisplay[2])) ? true : updateDisplayedWaveform;
+	updateDisplayedWaveform = ImGui::Checkbox("Show Synthesized in frequency-domain: ", &(whetherToDisplay[3])) ? true : updateDisplayedWaveform;
+	updateDisplayedWaveform = ImGui::Checkbox("Show Synthesized in time-domain: ", &(whetherToDisplay[4])) ? true : updateDisplayedWaveform;
+
+	ImGui::End();
+
+	// Update container that defines what signals to draw.
+	if (updateDisplayedWaveform)
+	{
+		toDisplay.resize(0);
+		for (int i = 0; i < (int)whetherToDisplay.size(); i++)
+		{
+			if (whetherToDisplay[i]) toDisplay.push_back((Waveform)i);
+		}
+	}
+}
+
+void MyApp::Application::UpdateToDisplayAndToPlay_(const std::vector<float>& generatedTimeDomain, const std::vector<float>& generatedTimeDomainFromDFT, const std::vector<float>& synthesizedTimeDomainFromDFT,
+	const std::vector<std::complex<float>>& generatedFreqDomain, const std::vector<std::complex<float>>& synthesizedFreqDomain)
+{
+	// Update rendering callbacks if needed.
+	static auto lastUpdateSounds = SoundToPlay::None;
+	if (toPlay != lastUpdateSounds)
+	{
+		audioEngine_.DestroyAll();
+
+		switch (toPlay)
+		{
+		case SoundToPlay::None:
+			break;
+		case SoundToPlay::Generated:
+		{
+			MyApp::Sound* generatedSound = audioEngine_.CreateSound(generatedTimeDomain);
+			generatedSound->Play();
+		}
+		break;
+		case SoundToPlay::GeneratedFromDFT:
+		{
+			MyApp::Sound* generatedSoundFromDFT = audioEngine_.CreateSound(generatedTimeDomainFromDFT);
+			generatedSoundFromDFT->Play();
+		}
+		break;
+		case SoundToPlay::Synthesized:
+		{
+			MyApp::Sound* synthesizedSoundFromDFT = audioEngine_.CreateSound(synthesizedTimeDomainFromDFT);
+			synthesizedSoundFromDFT->Play();
+		}
+		break;
+		default:
+			break;
+		}
+	}
+	lastUpdateSounds = toPlay;
+
+	// Update played sound if needed.
+	static auto lastUpdateWaveforms = std::vector<Waveform>();
+	if (toDisplay != lastUpdateWaveforms)
+	{
+		sdl_.ClearRenderCallbacks();
+		sdl_.RegisterRenderCallback([&]()
+			{
+				for (size_t i = 0; i < toDisplay.size(); i++)
+				{
+					switch (toDisplay[i])
+					{
+					case Waveform::Generated:
+					{
+						Callback_RenderTimeDomainSignal_(generatedTimeDomain, colors_[i], offsets_[i]);
+					}break;
+
+					case Waveform::GeneratedFreqDomain:
+					{
+						Callback_RenderFrequencyDomainSignal_(generatedFreqDomain, colors_[i], offsets_[i]);
+					}break;
+
+					case Waveform::GeneratedFromDFT:
+					{
+						Callback_RenderTimeDomainSignal_(generatedTimeDomainFromDFT, colors_[i], offsets_[i]);
+					}break;
+
+					case Waveform::SynthesizedFreqDomain:
+					{
+						Callback_RenderFrequencyDomainSignal_(synthesizedFreqDomain, colors_[i], offsets_[i]);
+					}break;
+
+					case Waveform::SynthesizedFromDFT:
+					{
+						Callback_RenderTimeDomainSignal_(synthesizedTimeDomainFromDFT, colors_[i], offsets_[i]);
+					}break;
+
+					default:
+						break;
+					}
+				}
+			});
+	}
+	lastUpdateWaveforms = toDisplay;
 }

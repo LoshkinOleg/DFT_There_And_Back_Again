@@ -24,6 +24,20 @@ static std::vector<float> synthesizedTimeDomainFromDFT(SINE_SAMPLE_RATE, 0.0f); 
 static std::vector<std::complex<float>> synthesizedFreqDomain(SINE_SAMPLE_RATE, 0.0f); // Tone reconstructed from the manually constructed fourier transform.
 
 /**
+* Generates a single sample of a pure tone.
+*
+* @param n Index of the sample.
+* @param sampleRate Number of samples to complete a single period with a frequency of 1 Hz.
+* @param frequency The desired tone, in Hertz.
+* @return Value of the signal at sample index n.
+*/
+float GenerateSine(const float n, const float sampleRate, const float frequency)
+{
+	// TODO: implement a function that returns the normalized value of a sine at the "n"'th index of a signal sampled at "sampleRate". The sine should have a frequency of "frequency".
+	return 0.0f;
+}
+
+/**
 * Implementation of euler's identity e^(i*x) = cos(x) + i*sin(x)
 */
 std::complex<float> EulersFormula(const float x)
@@ -90,20 +104,6 @@ void IDFT(std::vector<float>& out, const std::vector<std::complex<float>>& y, co
 	// TODO: implement the IDFT.
 
 	if (printProgress) std::cout << "IDFT done." << std::endl;
-}
-
-/**
-* Generates a single sample of a pure tone.
-*
-* @param n Index of the sample.
-* @param sampleRate Number of samples to complete a single period with a frequency of 1 Hz.
-* @param frequency The desired tone, in Hertz.
-* @return Value of the signal at sample index n.
-*/
-float GenerateSine(const float n, const float sampleRate, const float frequency)
-{
-	// TODO: implement a function that returns the normalized value of a sine at the "n"'th index of a signal sampled at "sampleRate". The sine should have a frequency of "frequency".
-	return 0.0f;
 }
 
 void GenerateSignals()

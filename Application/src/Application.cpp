@@ -105,7 +105,7 @@ void MyApp::Application::Callback_ResetTransformations_()
 void MyApp::Application::Callback_RenderFrequencyDomainSignal_(const std::vector<std::complex<float>>& signal, const MyApp::ColorBytes color, const float& offset)
 {
 	// Compute scaling factor so that the element with the biggest value fits on screen.
-	float biggestComponent = -1.0f;
+	float biggestComponent = 0.0001f;
 	for (const auto& complex : signal)
 	{
 		if (std::fabs(complex.real()) > biggestComponent) biggestComponent = std::fabs(complex.real());
@@ -183,7 +183,7 @@ void MyApp::Application::Callback_RenderFrequencyDomainSignal_(const std::vector
 void MyApp::Application::Callback_RenderTimeDomainSignal_(const std::vector<float>& signal, const MyApp::ColorBytes color, const float offset)
 {
 	// Compute scaling factor so that the element with the biggest value fits on screen.
-	float biggestComponent = -1.0f;
+	float biggestComponent = 0.0001f;
 	for (const auto& amplitude : signal)
 	{
 		if (std::fabs(amplitude) > biggestComponent) biggestComponent = std::fabs(amplitude);

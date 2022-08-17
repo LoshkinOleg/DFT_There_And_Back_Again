@@ -50,6 +50,16 @@ void MyApp::Application::Run(const std::vector<float>& generatedTimeDomain, cons
 		throw std::runtime_error(std::string("Couldn't write wav to file."));
 	};
 
+	// Write frequency-domain signals to disk as well.
+	if (!assetManager_.WriteCarr(generatedFreqDomain, (std::string(APPLICATION_TXT_OUTPUTS_DIR) + "generated.cpp").c_str()))
+	{
+		throw std::runtime_error(std::string("Couldn't write txt to file."));
+	}
+	if (!assetManager_.WriteCarr(synthesizedFreqDomain, (std::string(APPLICATION_TXT_OUTPUTS_DIR) + "synthesized.cpp").c_str()))
+	{
+		throw std::runtime_error(std::string("Couldn't write txt to file."));
+	}
+
 	bool shutdown = false;
 	while (!shutdown)
 	{

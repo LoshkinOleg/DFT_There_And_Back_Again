@@ -14,7 +14,7 @@ namespace MyApp
 	{
 	public:
 
-		// Defines which waveforms to render.
+		// Used to define which waveforms to render.
 		enum class Waveform : int
 		{
 			Generated = 0,
@@ -25,6 +25,7 @@ namespace MyApp
 			SynthesizedFromDFT
 		};
 
+		// Used to define which time-domain signal to play.
 		enum class SoundToPlay : int
 		{
 			None = 0,
@@ -36,18 +37,34 @@ namespace MyApp
 		};
 
 		Application() = delete;
+		/**
+		* Constructs an Application.
+		* 
+		* @param displaySize Side size in pixels that the rendering window should have. Currently only square resolutions are supported.
+		* @param sampleRate Audio sampling rate used for processing audio signals.
+		* @param bufferSize Single channel size of the audio buffer used to service the audio.
+		*/
 		Application(const unsigned int displaySize, const unsigned int sampleRate, const unsigned int bufferSize);
 
-		// User implemented methods.
+		// User implemented methods. Use those to call your own code.
 		void OnStart();
 		void OnUpdate();
 		void OnShutdown();
 
+		/**
+		* Launches the Application.
+		* 
+		* @param generatedTimeDomain Time-domain signal you've generated yourself.
+		* @param generatedTimeDomainFromDFT Time-domain signal you've reconstructed from the generatedFreqDomain.
+		* @param synthesizedTimeDomainFromDFT Time-domain signal you've reconstructed from synthesizedFreqDomain.
+		* @param generatedFreqDomain Frequency-domain signal you've obtained by running the DFT on generatedTimeDomain.
+		* @param synthesizedFreqDomain Frequency-domain signal you've constructed yourself to try to recreate generatedFreqDomain.
+		*/
 		void Run(const std::vector<float>& generatedTimeDomain, const std::vector<float>& generatedTimeDomainFromDFT, const std::vector<float>& synthesizedTimeDomainFromDFT,
 			const std::vector<std::complex<float>>& generatedFreqDomain, const std::vector<std::complex<float>>& synthesizedFreqDomain);
 
-		SoundToPlay toPlay = SoundToPlay::None;
-		std::vector<Waveform> toDisplay = {};
+		SoundToPlay toPlay = SoundToPlay::None; // Defines what time-domain signal should be played back, if any.
+		std::vector<Waveform> toDisplay = {}; // Defines what signals should be displayed, if any.
 	private:
 		/**
 		* Rotates the waveform.
@@ -105,14 +122,20 @@ namespace MyApp
 
 		/**
 		* Updates which waveforms to display and which sound to play.
+		* 
+		* @param generatedTimeDomain Time-domain signal you've generated yourself.
+		* @param generatedTimeDomainFromDFT Time-domain signal you've reconstructed from the generatedFreqDomain.
+		* @param synthesizedTimeDomainFromDFT Time-domain signal you've reconstructed from synthesizedFreqDomain.
+		* @param generatedFreqDomain Frequency-domain signal you've obtained by running the DFT on generatedTimeDomain.
+		* @param synthesizedFreqDomain Frequency-domain signal you've constructed yourself to try to recreate generatedFreqDomain.
 		*/
 		void UpdateToDisplayAndToPlay_(const std::vector<float>& generatedTimeDomain, const std::vector<float>& generatedTimeDomainFromDFT, const std::vector<float>& synthesizedTimeDomainFromDFT,
 			const std::vector<std::complex<float>>& generatedFreqDomain, const std::vector<std::complex<float>>& synthesizedFreqDomain);
 
 	private:
-		SdlManager sdl_;
-		AudioEngine audioEngine_;
-		AssetManager assetManager_{};
+		SdlManager sdl_; // Responsible for managing user input and for graphical rendering.
+		AudioEngine audioEngine_; // Responsible for servicing the audio.
+		AssetManager assetManager_{}; // Responsible for managing assets.
 
 		static constexpr const MyMath::Box BOUNDS{ -2.0f, 2.0f, -2.0f, 2.0f, -2.0f, 2.0f }; // Bounds of the space in which objects are rendered.
 		static constexpr const MyMath::Mat4x4 ORTHO_PROJ_MAT = MyMath::OrthogonalProjectionMatrix(BOUNDS.back, BOUNDS.front, BOUNDS.right, BOUNDS.left, BOUNDS.bottom, BOUNDS.top); // Projection matrix used.

@@ -20,7 +20,7 @@ void MyApp::Sound::Stop()
 	currentEnd_ = (unsigned int)-1;
 }
 
-void MyApp::Sound::AddEffect(const std::function<void(std::vector<float>&)>& effect)
+void MyApp::Sound::AddEffect(std::function<void(std::vector<float>&)> effect)
 {
 	fx_.push_back(effect);
 }
@@ -134,13 +134,11 @@ MyApp::AudioEngine::AudioEngine(const unsigned int sampleRate, const unsigned in
 	const PaDeviceIndex selectedDevice = Pa_GetDefaultOutputDevice();
 	if (selectedDevice == paNoDevice) throw std::runtime_error(std::string("PortAudio failed to retireve a default playback device."));
 
-	defaultPlaybackDelay_ = Pa_GetDeviceInfo(selectedDevice)->defaultLowInputLatency;
-
 	PaStreamParameters outputParams{
 		selectedDevice,
 		2, // Engine only supports headphones. 2 channels.
 		paFloat32,
-		defaultPlaybackDelay_,
+		Pa_GetDeviceInfo(selectedDevice)->defaultLowInputLatency,
 		NULL
 	};
 
@@ -244,7 +242,7 @@ void MyApp::AudioEngine::ProcessAudio()
 	for (size_t i = 0; i < sounds_.size(); ++i)
 	{
 		sounds_[i].Process_(left, right);
-		MyUtils::InterleaveSignals(stereoSignal, left, right); // Note: pretty sure you can rearrange things to move this method out of the for loop.
+		MyUtils::InterleaveSignals(stereoSignal, left, right); // Note: pretty sure I can rearrange things to move this method out of the for loop.
 		MyUtils::SumSignals(processedBackbuffer, stereoSignal);
 	}
 

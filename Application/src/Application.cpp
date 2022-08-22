@@ -7,7 +7,7 @@ MyApp::Application::Application(const unsigned int displaySize, const unsigned i
 void MyApp::Application::Run(const std::vector<float>& generatedTimeDomain, const std::vector<float>& generatedTimeDomainFromDFT, const std::vector<float>& synthesizedTimeDomainFromDFT,
 	const std::vector<std::complex<float>>& generatedFreqDomain, const std::vector<std::complex<float>>& synthesizedFreqDomain)
 {
-	EASY_PROFILER_ENABLE;
+	EASY_PROFILER_ENABLE; // For profiling with easy_profiler.
 
 	// Register callbacks.
 	sdl_.RegisterImguiCallback([&]()
@@ -34,7 +34,7 @@ void MyApp::Application::Run(const std::vector<float>& generatedTimeDomain, cons
 			Callback_ResetTransformations_();
 		});
 
-	OnStart();
+	OnStart(); // Call back user startup code.
 
 	// Write time-domain signals to disk. Useful for checking if the audio artifacts come from the signal itself or from the hardware's processing.
 	if (!assetManager_.WriteWav(generatedTimeDomain, (std::string(APPLICATION_WAV_OUTPUTS_DIR) + "generated.wav").c_str(), 1, generatedTimeDomain.size()))
@@ -60,18 +60,20 @@ void MyApp::Application::Run(const std::vector<float>& generatedTimeDomain, cons
 		throw std::runtime_error(std::string("Couldn't write txt to file."));
 	}
 
+	// Run program without sleeping.
 	bool shutdown = false;
 	while (!shutdown)
 	{
 		EASY_BLOCK("Application's update");
-		shutdown = sdl_.Update();
-		audioEngine_.ProcessAudio();
-		OnUpdate();
+		shutdown = sdl_.Update(); // Poll and process window and input events. Render and update display.
+		audioEngine_.ProcessAudio(); // Process the audio of all Sounds to the audio back buffer if necessary.
+		OnUpdate(); // Call user update code.
 		UpdateToDisplayAndToPlay_(generatedTimeDomain, generatedTimeDomainFromDFT, synthesizedTimeDomainFromDFT, generatedFreqDomain, synthesizedFreqDomain);
 	}
 
-	OnShutdown();
+	OnShutdown(); // Call user shutdown code.
 
+	// Output profiling file.
 #if BUILD_WITH_EASY_PROFILER
 	const auto success = profiler::dumpBlocksToFile((std::string(APPLICATION_PROFILER_OUTPUTS_DIR) + "session.prof").c_str());
 	if (!success) throw std::runtime_error(std::string("Failed to write easy profiler session to disk."));
@@ -107,7 +109,7 @@ void MyApp::Application::Callback_ResetTransformations_()
 	accumulatedYaw_ = 0.0f;
 	accumulatedPitch_ = 0.0f;
 	samplesSpacing_ = 1.0f;
-	modelRotation_ = {};
+	modelRotation_ = {}; // Default value is an identity matrix.
 	modelTranslation_ = {};
 	viewMatrix_ = {};
 }
